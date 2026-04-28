@@ -149,6 +149,7 @@ struct GestureApp: App {
                 configPath: ConfigManager.defaultConfigPath(),
                 onSave: { reloadConfig() }
             )
+            .environmentObject(preview)
         }
         .windowResizability(.contentSize)
 

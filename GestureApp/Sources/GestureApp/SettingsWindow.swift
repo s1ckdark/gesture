@@ -5,6 +5,7 @@ struct SettingsWindow: View {
     let configPath: String
     let onSave: () -> Void
 
+    @EnvironmentObject var preview: PreviewModel
     @State private var draft: AppConfig?
     @State private var saveError: String?
     @State private var saved = false
@@ -87,6 +88,7 @@ struct SettingsWindow: View {
                 onAdd: addGesture,
                 onCancel: { showingAddSheet = false }
             )
+            .environmentObject(preview)
         }
         .sheet(isPresented: $showingPresetSheet) {
             PresetLibrarySheet(

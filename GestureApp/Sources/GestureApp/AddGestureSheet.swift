@@ -24,6 +24,7 @@ struct AddGestureSheet: View {
     @State private var shellCommand: String = ""
 
     @StateObject private var recorder = HotkeyRecorder()
+    @EnvironmentObject var preview: PreviewModel
 
     private static let fingerLabels = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
 
@@ -77,9 +78,11 @@ struct AddGestureSheet: View {
             switch kind {
             case .single:
                 fingerRow(label: "Finger Pattern", binding: $fingers)
+                liveHUD(target: $fingers)
             case .dual:
                 fingerRow(label: "Left Hand", binding: $leftFingers)
                 fingerRow(label: "Right Hand", binding: $rightFingers)
+                liveHUD(target: nil) // dual: hint only, copy ambiguous
                 proximityRow
             }
 
@@ -116,6 +119,34 @@ struct AddGestureSheet: View {
             }
             Text("Pattern: \(patternString(binding.wrappedValue))")
                 .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func liveHUD(target: Binding<[Bool]>?) -> some View {
+        if !preview.fingerStates.isEmpty {
+            HStack(spacing: 6) {
+                Text("Live:").font(.caption2).foregroundColor(.secondary)
+                ForEach(0..<5, id: \.self) { i in
+                    Circle()
+                        .fill(preview.fingerStates[i] == 1 ? Color.blue : Color.gray.opacity(0.3))
+                        .frame(width: 12, height: 12)
+                }
+                Text("[\(preview.fingerStates.map(String.init).joined(separator: ","))]")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if let target {
+                    Button("Match Current") {
+                        target.wrappedValue = preview.fingerStates.map { $0 == 1 }
+                    }
+                    .controlSize(.small)
+                }
+            }
+        } else {
+            Text("Open the Camera Preview window to see live finger state here.")
+                .font(.caption2)
                 .foregroundColor(.secondary)
         }
     }
