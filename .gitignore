@@ -18,6 +18,8 @@ DerivedData/
 
 # Gesture app
 .superpowers/
+.omc/
+**/.omc/
 
 # Socket
 /tmp/gesture.sock
