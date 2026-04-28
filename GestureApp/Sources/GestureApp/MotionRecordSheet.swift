@@ -205,6 +205,7 @@ struct MotionRecordSheet: View {
         }
         let cfg = GestureConfig(
             type: "motion_custom",
+            emoji: nil,
             pattern: nil,
             patternLeft: nil, patternRight: nil,
             proximity: nil,

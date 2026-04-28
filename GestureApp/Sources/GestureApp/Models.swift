@@ -55,6 +55,8 @@ struct ActionConfig: Codable, Equatable {
 
 struct GestureConfig: Codable, Equatable {
     var type: String
+    /// Optional emoji or short visual hint shown in Settings + notifications.
+    var emoji: String?
     /// Optional 5-bit finger pattern [thumb, index, middle, ring, pinky] for custom static poses.
     var pattern: [Int]?
     /// For type == "static_dual": pattern of the user's left hand.
@@ -72,7 +74,7 @@ struct GestureConfig: Codable, Equatable {
     var action: ActionConfig
 
     enum CodingKeys: String, CodingKey {
-        case type, pattern, proximity, action
+        case type, emoji, pattern, proximity, action
         case patternLeft = "pattern_left"
         case patternRight = "pattern_right"
         case motionTemplate = "motion_template"

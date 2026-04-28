@@ -13,6 +13,7 @@ struct AddGestureSheet: View {
     let onCancel: () -> Void
 
     @State private var name: String = ""
+    @State private var emoji: String = ""
     @State private var kind: GestureKind = .single
     @State private var fingers: [Bool] = Array(repeating: false, count: 5)
     @State private var leftFingers: [Bool] = Array(repeating: false, count: 5)
@@ -65,13 +66,20 @@ struct AddGestureSheet: View {
             }
             .pickerStyle(.segmented)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Name")
-                    .font(.subheadline)
-                TextField("e.g. spider, fox, three_fingers", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                if let err = nameError {
-                    Text(err).font(.caption).foregroundColor(.red)
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Name").font(.subheadline)
+                    TextField("e.g. spider, fox, three_fingers", text: $name)
+                        .textFieldStyle(.roundedBorder)
+                    if let err = nameError {
+                        Text(err).font(.caption).foregroundColor(.red)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Emoji (optional)").font(.subheadline)
+                    TextField("🤘", text: $emoji)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
                 }
             }
 
@@ -244,12 +252,15 @@ struct AddGestureSheet: View {
             return  // GUI doesn't currently emit other action types
         }
 
+        let trimmedEmoji = emoji.trimmingCharacters(in: .whitespaces)
+        let emojiValue: String? = trimmedEmoji.isEmpty ? nil : trimmedEmoji
         let cfg: GestureConfig
         switch kind {
         case .single:
             let pattern = fingers.map { $0 ? 1 : 0 }
             cfg = GestureConfig(
                 type: "static",
+                emoji: emojiValue,
                 pattern: pattern,
                 patternLeft: nil,
                 patternRight: nil,
@@ -259,6 +270,7 @@ struct AddGestureSheet: View {
         case .dual:
             cfg = GestureConfig(
                 type: "static_dual",
+                emoji: emojiValue,
                 pattern: nil,
                 patternLeft: leftFingers.map { $0 ? 1 : 0 },
                 patternRight: rightFingers.map { $0 ? 1 : 0 },

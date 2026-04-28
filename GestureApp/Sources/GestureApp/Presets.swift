@@ -25,7 +25,7 @@ struct GesturePreset: Identifiable {
         switch kind {
         case .single(let pattern):
             return GestureConfig(
-                type: "static",
+                type: "static", emoji: emoji,
                 pattern: pattern,
                 patternLeft: nil, patternRight: nil,
                 proximity: nil, motionTemplate: nil,
@@ -34,7 +34,7 @@ struct GesturePreset: Identifiable {
             )
         case .dual(let left, let right, let proximity):
             return GestureConfig(
-                type: "static_dual",
+                type: "static_dual", emoji: emoji,
                 pattern: nil,
                 patternLeft: left, patternRight: right,
                 proximity: proximity, motionTemplate: nil,
@@ -43,7 +43,7 @@ struct GesturePreset: Identifiable {
             )
         case .dualMotion(let mLeft, let mRight):
             return GestureConfig(
-                type: "motion_dual",
+                type: "motion_dual", emoji: emoji,
                 pattern: nil,
                 patternLeft: nil, patternRight: nil,
                 proximity: nil, motionTemplate: nil,

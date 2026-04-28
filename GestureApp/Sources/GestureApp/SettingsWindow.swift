@@ -188,6 +188,9 @@ private struct GestureEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
+                if let emoji = config.emoji, !emoji.isEmpty {
+                    Text(emoji).font(.title2)
+                }
                 Text(displayName(name))
                     .font(.headline)
                 Text("(\(config.type))")

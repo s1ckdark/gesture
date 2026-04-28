@@ -277,9 +277,11 @@ struct GestureApp: App {
             }
 
             if notifyOnGesture {
-                let actionDesc = config.gestures[name].map(actionDescription) ?? "no action"
+                let g = config.gestures[name]
+                let actionDesc = g.map(actionDescription) ?? "no action"
+                let emoji = g?.emoji.map { "\($0) " } ?? ""
                 NotificationManager.shared.notify(
-                    title: "Gesture: \(name)",
+                    title: "\(emoji)Gesture: \(name)",
                     body: actionDesc
                 )
             }
