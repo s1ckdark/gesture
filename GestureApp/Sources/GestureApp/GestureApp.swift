@@ -1,7 +1,17 @@
 import SwiftUI
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Menu-bar-only app: no Dock icon, windows don't open at launch.
+        NSApp.setActivationPolicy(.accessory)
+    }
+}
 
 @main
 struct GestureApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     @StateObject private var statusBar = StatusBarController()
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
@@ -13,15 +23,6 @@ struct GestureApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        Window("Gesture Settings", id: "settings") {
-            SettingsWindow(
-                liveConfig: $config,
-                configPath: ConfigManager.defaultConfigPath(),
-                onSave: { reloadConfig() }
-            )
-        }
-        .windowResizability(.contentSize)
-
         MenuBarExtra {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -93,6 +94,15 @@ struct GestureApp: App {
             Image(systemName: statusBar.status.icon)
         }
         .menuBarExtraStyle(.window)
+
+        Window("Gesture Settings", id: "settings") {
+            SettingsWindow(
+                liveConfig: $config,
+                configPath: ConfigManager.defaultConfigPath(),
+                onSave: { reloadConfig() }
+            )
+        }
+        .windowResizability(.contentSize)
     }
 
     private func toggleEngine() {
@@ -132,7 +142,7 @@ struct GestureApp: App {
                 connectSocket(config: config)
             }
         } catch {
-            print("Failed to start engine: \(error)")
+            NSLog("[Gesture] Failed to start engine: \(error.localizedDescription) — enginePath=\(enginePath)")
         }
     }
 
@@ -190,16 +200,25 @@ struct GestureApp: App {
     }
 
     private func findEnginePath() -> String {
+        // 1. cwd-relative (works when running via `swift run` from project root)
         let cwd = FileManager.default.currentDirectoryPath
+        // 2. Bundle-relative — when packaged as .app inside <project>/dist/<App>.app,
+        //    project root is two levels above the bundle.
+        let bundlePath = Bundle.main.bundlePath
+        let bundleParent = (bundlePath as NSString).deletingLastPathComponent  // dist/
+        let projectFromBundle = (bundleParent as NSString).deletingLastPathComponent  // project root
+
         let candidates = [
             "\(cwd)/engine/main.py",
+            "\(projectFromBundle)/engine/main.py",
             Bundle.main.resourcePath.map { "\($0)/engine/main.py" } ?? "",
         ]
-        for path in candidates {
+        for path in candidates where !path.isEmpty {
             if FileManager.default.fileExists(atPath: path) {
                 return path
             }
         }
-        return "\(cwd)/engine/main.py"
+        // Last resort
+        return "\(projectFromBundle)/engine/main.py"
     }
 }
