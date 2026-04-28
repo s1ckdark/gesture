@@ -23,6 +23,7 @@ struct GestureApp: App {
     private let maxSocketRetries = 5
 
     @AppStorage("soundFeedback") private var soundFeedback = false
+    @AppStorage("notifyOnGesture") private var notifyOnGesture = false
 
     @Environment(\.openWindow) private var openWindow
 
@@ -94,6 +95,9 @@ struct GestureApp: App {
                 .toggleStyle(.checkbox)
 
                 Toggle("Sound on Gesture", isOn: $soundFeedback)
+                    .toggleStyle(.checkbox)
+
+                Toggle("Notify on Gesture", isOn: $notifyOnGesture)
                     .toggleStyle(.checkbox)
 
                 Divider()
@@ -182,6 +186,14 @@ struct GestureApp: App {
                 NSSound(named: "Tink")?.play()
             }
 
+            if notifyOnGesture {
+                let actionDesc = config.gestures[name].map(actionDescription) ?? "no action"
+                NotificationManager.shared.notify(
+                    title: "Gesture: \(name)",
+                    body: actionDesc
+                )
+            }
+
             if let gestureConfig = config.gestures[name] {
                 actionExecutor.execute(action: gestureConfig.action)
             }
@@ -235,6 +247,18 @@ struct GestureApp: App {
             config = try ConfigManager.load(from: ConfigManager.defaultConfigPath())
         } catch {
             print("Config load failed: \(error)")
+        }
+    }
+
+    private func actionDescription(_ g: GestureConfig) -> String {
+        switch g.action.type {
+        case .hotkey:
+            return (g.action.keys ?? []).joined(separator: " + ")
+        case .shell:
+            let cmd = g.action.command ?? ""
+            return cmd.count > 60 ? String(cmd.prefix(60)) + "…" : cmd
+        case .applescript:
+            return "applescript"
         }
     }
 
