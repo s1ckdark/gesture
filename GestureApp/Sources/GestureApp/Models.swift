@@ -81,6 +81,9 @@ struct GestureConfig: Codable, Equatable {
     /// For type == "sequence": maximum elapsed time for the full sequence in milliseconds.
     var windowMs: Int?
     var action: ActionConfig
+    /// Per-app action overrides keyed by bundle identifier. When the frontmost
+    /// app's bundle ID matches a key, that ActionConfig is fired instead of `action`.
+    var appOverrides: [String: ActionConfig]?
 
     enum CodingKeys: String, CodingKey {
         case type, emoji, pattern, proximity, action, sequence
@@ -90,6 +93,7 @@ struct GestureConfig: Codable, Equatable {
         case motionLeft = "motion_left"
         case motionRight = "motion_right"
         case windowMs = "window_ms"
+        case appOverrides = "app_overrides"
     }
 }
 

@@ -15,6 +15,15 @@ gestures:
     action:
       type: hotkey
       keys: ["cmd", "c"]
+    # Per-app overrides — same gesture, different action depending on
+    # the frontmost app's bundle ID. Falls back to the default `action`.
+    app_overrides:
+      "com.google.Chrome":
+        type: hotkey
+        keys: ["cmd", "t"]   # new tab in Chrome
+      "com.microsoft.VSCode":
+        type: hotkey
+        keys: ["cmd", "n"]   # new file in VS Code
 
   peace:
     type: static

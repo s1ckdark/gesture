@@ -183,6 +183,9 @@ private struct GestureEditor: View {
     /// Non-nil only for user-added custom poses (those with `pattern`).
     let onDelete: (() -> Void)?
 
+    @State private var showingOverrideSheet = false
+    @State private var editingOverride: (bundleID: String, action: ActionConfig)?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -213,10 +216,93 @@ private struct GestureEditor: View {
             }
 
             ActionEditorView(config: $config.action)
+
+            overridesSection
         }
         .padding(8)
         .background(Color.gray.opacity(0.08))
         .cornerRadius(6)
+        .sheet(isPresented: $showingOverrideSheet) {
+            AppOverrideSheet(
+                gestureName: name,
+                editing: editingOverride,
+                excludeBundleIDs: Set((config.appOverrides ?? [:]).keys),
+                onSave: { bundleID, action in
+                    var dict = config.appOverrides ?? [:]
+                    dict[bundleID] = action
+                    config.appOverrides = dict
+                    showingOverrideSheet = false
+                    editingOverride = nil
+                },
+                onCancel: {
+                    showingOverrideSheet = false
+                    editingOverride = nil
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var overridesSection: some View {
+        let overrides = config.appOverrides ?? [:]
+        if !overrides.isEmpty || true {
+            DisclosureGroup("App Overrides (\(overrides.count))") {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(overrides.keys.sorted(), id: \.self) { bundleID in
+                        if let action = overrides[bundleID] {
+                            HStack {
+                                Text(bundleID)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .frame(maxWidth: 220, alignment: .leading)
+                                Text("→ \(briefAction(action))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: {
+                                    editingOverride = (bundleID, action)
+                                    showingOverrideSheet = true
+                                }) {
+                                    Image(systemName: "pencil")
+                                }
+                                .controlSize(.small)
+                                Button(action: { removeOverride(bundleID) }) {
+                                    Image(systemName: "trash")
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                    Button(action: {
+                        editingOverride = nil
+                        showingOverrideSheet = true
+                    }) {
+                        Label("Add Override", systemImage: "plus")
+                            .font(.caption)
+                    }
+                    .controlSize(.small)
+                }
+                .padding(.top, 4)
+            }
+            .font(.caption)
+        }
+    }
+
+    private func removeOverride(_ bundleID: String) {
+        var dict = config.appOverrides ?? [:]
+        dict.removeValue(forKey: bundleID)
+        config.appOverrides = dict.isEmpty ? nil : dict
+    }
+
+    private func briefAction(_ a: ActionConfig) -> String {
+        switch a.type {
+        case .hotkey: return (a.keys ?? []).joined(separator: "+")
+        case .shell: return "shell"
+        case .click: return "click"
+        case .scroll: return "scroll"
+        case .typeText: return "type \"\(a.text?.prefix(20) ?? "")\""
+        case .webhook: return "POST"
+        case .applescript: return "applescript"
+        }
     }
 
     private func displayName(_ raw: String) -> String {

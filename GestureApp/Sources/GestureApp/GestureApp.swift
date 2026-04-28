@@ -315,7 +315,8 @@ struct GestureApp: App {
             }
 
             if let gestureConfig = config.gestures[name] {
-                actionExecutor.execute(action: gestureConfig.action)
+                let resolved = resolveAction(for: gestureConfig)
+                actionExecutor.execute(action: resolved)
             }
         }
         client.onStatus = { event in
@@ -371,6 +372,17 @@ struct GestureApp: App {
         } catch {
             print("Config load failed: \(error)")
         }
+    }
+
+    /// Pick the app-specific override if the frontmost app's bundle ID matches,
+    /// else fall back to the gesture's default action.
+    private func resolveAction(for g: GestureConfig) -> ActionConfig {
+        if let overrides = g.appOverrides,
+           let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+           let override = overrides[bundleID] {
+            return override
+        }
+        return g.action
     }
 
     private func actionDescription(_ g: GestureConfig) -> String {
