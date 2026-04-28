@@ -13,6 +13,7 @@ struct GestureApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     @StateObject private var statusBar = StatusBarController()
+    @StateObject private var loginItem = LoginItemController()
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
     @State private var actionExecutor = ActionExecutor()
@@ -77,6 +78,12 @@ struct GestureApp: App {
                     reloadConfig()
                 }
 
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { loginItem.isEnabled },
+                    set: { loginItem.setEnabled($0) }
+                ))
+                .toggleStyle(.checkbox)
+
                 Divider()
 
                 Button("Quit") {
@@ -89,6 +96,7 @@ struct GestureApp: App {
             .onAppear {
                 reloadConfig()
                 statusBar.refreshPermissions()
+                loginItem.refresh()
             }
         } label: {
             Image(systemName: statusBar.status.icon)
