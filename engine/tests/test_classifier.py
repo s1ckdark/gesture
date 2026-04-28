@@ -58,3 +58,12 @@ class TestStaticClassifier:
         landmarks = _make_landmarks([1, 1, 0, 0, 0])
         result = self.classifier.classify(landmarks)
         assert result is None  # not a defined gesture
+
+    def test_ok_sign(self):
+        """OK sign: thumb tip and index tip close together, other fingers extended."""
+        landmarks = _make_landmarks([1, 1, 1, 1, 1])  # base: all extended
+        # Move thumb tip and index tip close together
+        landmarks[4] = (0.5, 0.4, 0.0)    # thumb tip
+        landmarks[8] = (0.52, 0.42, 0.0)  # index tip — very close to thumb
+        result = self.classifier.classify(landmarks)
+        assert result == "ok_sign"
