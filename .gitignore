@@ -4,6 +4,7 @@ engine/*.pyc
 engine/venv/
 engine/.venv/
 engine/tests/__pycache__/
+engine/models/
 **/__pycache__/
 
 # Swift
