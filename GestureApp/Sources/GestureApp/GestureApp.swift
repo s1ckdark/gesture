@@ -28,6 +28,7 @@ struct GestureApp: App {
 
     @AppStorage("soundFeedback") private var soundFeedback = false
     @AppStorage("notifyOnGesture") private var notifyOnGesture = false
+    @AppStorage("speakOnGesture") private var speakOnGesture = false
 
     @Environment(\.openWindow) private var openWindow
 
@@ -124,6 +125,9 @@ struct GestureApp: App {
                     .toggleStyle(.checkbox)
 
                 Toggle("Notify on Gesture", isOn: $notifyOnGesture)
+                    .toggleStyle(.checkbox)
+
+                Toggle("Speak Gesture Name", isOn: $speakOnGesture)
                     .toggleStyle(.checkbox)
 
                 Divider()
@@ -259,6 +263,10 @@ struct GestureApp: App {
 
             if soundFeedback {
                 NSSound(named: "Tink")?.play()
+            }
+
+            if speakOnGesture {
+                SpeechManager.shared.announce(name.replacingOccurrences(of: "_", with: " "))
             }
 
             // While self-test is running, route gesture events to the test
