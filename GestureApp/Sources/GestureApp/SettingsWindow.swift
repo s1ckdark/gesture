@@ -9,6 +9,7 @@ struct SettingsWindow: View {
     @State private var saveError: String?
     @State private var saved = false
     @State private var showingAddSheet = false
+    @State private var showingPresetSheet = false
 
     var body: some View {
         Group {
@@ -36,10 +37,14 @@ struct SettingsWindow: View {
                 if saved {
                     Text("Saved ✓").foregroundColor(.green).font(.caption)
                 }
+                Button(action: { showingPresetSheet = true }) {
+                    Image(systemName: "books.vertical")
+                }
+                .help("Browse preset poses")
                 Button(action: { showingAddSheet = true }) {
                     Image(systemName: "plus")
                 }
-                .help("Add a new custom static pose")
+                .help("Add a new custom pose")
             }
             .padding(.horizontal)
             .padding(.top)
@@ -81,6 +86,13 @@ struct SettingsWindow: View {
                 existingNames: existingGestureNames,
                 onAdd: addGesture,
                 onCancel: { showingAddSheet = false }
+            )
+        }
+        .sheet(isPresented: $showingPresetSheet) {
+            PresetLibrarySheet(
+                existingNames: existingGestureNames,
+                onAdd: { name, cfg in addGesture(name: name, cfg: cfg) },
+                onClose: { showingPresetSheet = false }
             )
         }
     }
