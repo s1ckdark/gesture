@@ -17,6 +17,7 @@ struct GestureApp: App {
     @StateObject private var preview = PreviewModel()
     @StateObject private var selfTest = SelfTestModel()
     @StateObject private var stats = StatsManager()
+    @StateObject private var profiles = ProfileManager()
     @StateObject private var onboarding = OnboardingModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var processManager: ProcessManager?
@@ -24,6 +25,7 @@ struct GestureApp: App {
     @State private var actionExecutor = ActionExecutor()
     @State private var config: AppConfig?
     @State private var socketRetryCount = 0
+    @State private var showingProfiles = false
     private let maxSocketRetries = 5
 
     @AppStorage("soundFeedback") private var soundFeedback = false
@@ -115,6 +117,10 @@ struct GestureApp: App {
                     reloadConfig()
                 }
 
+                Button("Profile: \(profiles.activeProfile)") {
+                    showingProfiles = true
+                }
+
                 Toggle("Launch at Login", isOn: Binding(
                     get: { loginItem.isEnabled },
                     set: { loginItem.setEnabled($0) }
@@ -149,12 +155,24 @@ struct GestureApp: App {
                 reloadConfig()
                 statusBar.refreshPermissions()
                 loginItem.refresh()
+                profiles.refresh()
                 if !onboardingComplete {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         NSApp.activate(ignoringOtherApps: true)
                         openWindow(id: "onboarding")
                     }
                 }
+            }
+            .sheet(isPresented: $showingProfiles) {
+                ProfilesSheet(
+                    manager: profiles,
+                    onSwitched: {
+                        // Tell the engine to reload its config: stop+start cycles cleanly
+                        // and the config-watch is owned by Swift, so just reload our copy.
+                        reloadConfig()
+                    },
+                    onClose: { showingProfiles = false }
+                )
             }
         } label: {
             Image(systemName: statusBar.flashIcon ?? statusBar.status.icon)
