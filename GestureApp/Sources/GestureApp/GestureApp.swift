@@ -5,6 +5,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar-only app: no Dock icon, windows don't open at launch.
         NSApp.setActivationPolicy(.accessory)
+        // Defensive: clean up any engine.main processes left from a previous
+        // crash or pre-fix installation, before the user clicks Start.
+        ProcessManager.killOrphans()
     }
 
     /// Closing the app via ⌘Q, Dock right-click → Quit, or even SIGTERM

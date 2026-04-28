@@ -78,6 +78,21 @@ class ProcessManager {
         }
     }
 
+    /// Sweep any stray `engine.main` processes left from previous app instances
+    /// (e.g. a hard crash). Called at applicationDidFinishLaunching so the camera
+    /// is always free at startup.
+    static func killOrphans() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        task.arguments = ["-f", "engine.main"]
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            NSLog("[Gesture] killOrphans failed: \(error.localizedDescription)")
+        }
+    }
+
     /// Synchronously terminate every live Python child. Called from
     /// applicationWillTerminate so closing the app via ⌘Q, dock quit, or
     /// dragging the .app to trash all release the camera.
