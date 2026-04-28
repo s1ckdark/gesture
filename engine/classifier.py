@@ -250,6 +250,34 @@ class CustomMotionClassifier:
         return None
 
 
+class _RecentBuffer:
+    """Rolling list of (gesture, timestamp_ms) trimmed to `max_window_ms`.
+    Shared between SequenceClassifier and ChordClassifier so they don't
+    each re-implement the same record + prune dance.
+    """
+
+    def __init__(self, max_window_ms: float):
+        self._items: list = []
+        self._max_window = max_window_ms
+
+    def record(self, gesture: str):
+        now = time.time() * 1000
+        self._items.append((gesture, now))
+        if self._max_window > 0:
+            self._items = [(g, t) for g, t in self._items if now - t <= self._max_window]
+
+    @property
+    def items(self) -> list:
+        return self._items
+
+    def remove(self, names) -> None:
+        bad = set(names)
+        self._items = [(g, t) for g, t in self._items if g not in bad]
+
+    def clear(self) -> None:
+        self._items = []
+
+
 class SequenceClassifier:
     """Detects ordered gesture sequences within a time window.
 
@@ -262,31 +290,29 @@ class SequenceClassifier:
 
     def __init__(self, sequences: Optional[dict] = None):
         self.sequences = dict(sequences or {})
-        self.recent: list = []  # list of (gesture_name, timestamp_ms)
-        self._max_window = max(
+        max_window = max(
             (s.get("window_ms", 0) for s in self.sequences.values()),
             default=0,
         )
+        self._buffer = _RecentBuffer(max_window)
 
     def record(self, gesture: str):
-        now = time.time() * 1000
-        self.recent.append((gesture, now))
-        if self._max_window > 0:
-            self.recent = [(g, t) for g, t in self.recent if now - t <= self._max_window]
+        self._buffer.record(gesture)
 
     def detect(self) -> Optional[str]:
-        if not self.sequences or not self.recent:
+        recent = self._buffer.items
+        if not self.sequences or not recent:
             return None
         for name, spec in self.sequences.items():
             seq = spec.get("sequence") or []
             window = spec.get("window_ms", 0)
             n = len(seq)
-            if n == 0 or len(self.recent) < n:
+            if n == 0 or len(recent) < n:
                 continue
-            tail = self.recent[-n:]
+            tail = recent[-n:]
             tail_names = [g for g, _ in tail]
             if tail_names == seq and (tail[-1][1] - tail[0][1]) <= window:
-                self.recent = []
+                self._buffer.clear()
                 return name
         return None
 
@@ -298,37 +324,33 @@ class ChordClassifier:
 
     def __init__(self, chords: Optional[dict] = None):
         self.chords = dict(chords or {})
-        self.recent: list = []
-        self._max_window = max(
+        max_window = max(
             (c.get("window_ms", 0) for c in self.chords.values()),
             default=0,
         )
+        self._buffer = _RecentBuffer(max_window)
 
     def record(self, gesture: str):
-        now = time.time() * 1000
-        self.recent.append((gesture, now))
-        if self._max_window > 0:
-            self.recent = [(g, t) for g, t in self.recent if now - t <= self._max_window]
+        self._buffer.record(gesture)
 
     def detect(self) -> Optional[str]:
-        if not self.chords or not self.recent:
+        recent = self._buffer.items
+        if not self.chords or not recent:
             return None
         for name, spec in self.chords.items():
             target = set(spec.get("gestures") or [])
             window = spec.get("window_ms", 0)
             if not target:
                 continue
-            # Most-recent timestamp per target gesture
             latest_for: dict = {}
-            for g, t in self.recent:
+            for g, t in recent:
                 if g in target and t > latest_for.get(g, -1):
                     latest_for[g] = t
             if set(latest_for.keys()) != target:
                 continue
             spread = max(latest_for.values()) - min(latest_for.values())
             if spread <= window:
-                # Clear records used by this chord so it doesn't re-fire on the next gesture
-                self.recent = [(g, t) for g, t in self.recent if g not in target]
+                self._buffer.remove(target)
                 return name
         return None
 
