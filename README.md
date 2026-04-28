@@ -96,6 +96,32 @@ gestures:
 
 Note: handedness is from your perspective (subject), not the camera's. MediaPipe labels them automatically.
 
+## Plugin SDK
+
+Drop any Python file under `~/.gesture/plugins/` and the engine will load it at startup. Export a top-level `handle(gesture_name, event)` and you'll be called for every recognized gesture in addition to the normal Swift-side action handler.
+
+```python
+# ~/.gesture/plugins/notion_log.py
+import urllib.request, json, time
+
+def handle(gesture_name, event):
+    if gesture_name != "thumbs_up":
+        return
+    body = json.dumps({
+        "ts": event["timestamp"],
+        "kind": gesture_name,
+    }).encode()
+    req = urllib.request.Request(
+        "https://example.com/log",
+        method="POST",
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    urllib.request.urlopen(req, timeout=2)
+```
+
+`event` is `{"name": str, "confidence": float, "timestamp": float}`. Plugins run on the engine main loop — keep handlers fast or spawn a thread for long-running work. Plugins reload only on engine restart.
+
 ## Two-handed motion
 
 Both hands moving together unlocks gestures like spread/pinch. Use `type: motion_dual` with directions for each hand:

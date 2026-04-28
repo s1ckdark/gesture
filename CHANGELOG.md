@@ -6,6 +6,21 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-29
+
+### Added
+- Action chains — single gesture fires ordered list of sub-actions with optional pre-step delays
+- Window-title context for app overrides — `"com.bundle.id | substring"` and `"* | substring"` keys
+- Anti-fatigue mode — burst suppression with one-shot "take a break" notification
+- Local HTTP API (NWListener-based) — GET /stats, GET /config, POST /trigger/<name>
+- Macro recorder — capture global keypresses with delays into a chain action; bind to a static pose
+- Chord macros — unordered set of gestures within a window (mirrors sequence but order-independent)
+- Voice gate — SFSpeechRecognizer wake word required for gestures to fire (off by default)
+- Plugin SDK — Python files under `~/.gesture/plugins/` are loaded by the engine; exported `handle(gesture, event)` is called per gesture
+
+### Changed
+- Engine `_fire` records into both SequenceClassifier and ChordClassifier and dispatches to loaded plugins
+
 ## [0.5.0] - 2026-04-29
 
 ### Added

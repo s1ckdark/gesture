@@ -20,6 +20,7 @@ from engine.classifier import (
     SequenceClassifier,
     ChordClassifier,
 )
+from engine.plugins import PluginManager
 from engine.socket_server import GestureSocketServer
 
 
@@ -119,6 +120,8 @@ class GestureEngine:
         )
         self.sequence_classifier = SequenceClassifier(sequences=sequences)
         self.chord_classifier = ChordClassifier(chords=chords)
+        self.plugins = PluginManager()
+        self.plugins.load()
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
             threshold=rec_cfg.get("motion_threshold", 0.15),
@@ -147,6 +150,7 @@ class GestureEngine:
         self.socket_server.send_gesture(name, confidence)
         self.sequence_classifier.record(name)
         self.chord_classifier.record(name)
+        self.plugins.dispatch(name, {"name": name, "confidence": confidence, "timestamp": time.time()})
         if (matched := self.sequence_classifier.detect()) and self.cooldown.should_fire(matched, 0.95):
             self.socket_server.send_gesture(matched, 0.95)
         if (matched := self.chord_classifier.detect()) and self.cooldown.should_fire(matched, 0.95):
