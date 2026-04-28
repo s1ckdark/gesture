@@ -27,6 +27,9 @@ enum ActionType: String, Codable {
     case hotkey
     case shell
     case applescript
+    case click
+    case scroll
+    case typeText = "type_text"
 }
 
 struct ActionConfig: Codable, Equatable {
@@ -34,6 +37,20 @@ struct ActionConfig: Codable, Equatable {
     var keys: [String]?
     var command: String?
     var script: String?
+    /// For click: "left" | "right" | "middle".
+    var button: String?
+    /// For click: number of clicks (1 single, 2 double, …).
+    var clickCount: Int?
+    /// For scroll: horizontal/vertical deltas in pixel units.
+    var dx: Double?
+    var dy: Double?
+    /// For type_text: the literal text to type.
+    var text: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, keys, command, script, button, dx, dy, text
+        case clickCount = "click_count"
+    }
 }
 
 struct GestureConfig: Codable, Equatable {

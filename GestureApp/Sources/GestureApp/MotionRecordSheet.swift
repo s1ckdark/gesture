@@ -153,7 +153,7 @@ struct MotionRecordSheet: View {
                     .frame(minHeight: 50, maxHeight: 80)
                     .background(Color.gray.opacity(0.15))
                     .cornerRadius(4)
-            case .applescript:
+            default:
                 EmptyView()
             }
         }
@@ -200,7 +200,7 @@ struct MotionRecordSheet: View {
             action = ActionConfig(type: .hotkey, keys: hotkeyKeys, command: nil, script: nil)
         case .shell:
             action = ActionConfig(type: .shell, keys: nil, command: shellCommand, script: nil)
-        case .applescript:
+        default:
             return
         }
         let cfg = GestureConfig(

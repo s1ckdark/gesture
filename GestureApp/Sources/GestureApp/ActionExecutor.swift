@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 class ActionExecutor {
     static let keyCodes: [String: CGKeyCode] = [
@@ -38,6 +39,12 @@ class ActionExecutor {
             executeShell(command: action.command ?? "")
         case .applescript:
             break // post-MVP
+        case .click:
+            executeClick(button: action.button ?? "left", count: action.clickCount ?? 1)
+        case .scroll:
+            executeScroll(dx: action.dx ?? 0, dy: action.dy ?? 0)
+        case .typeText:
+            executeTypeText(text: action.text ?? "")
         }
     }
 
@@ -68,6 +75,65 @@ class ActionExecutor {
 
         keyDown.post(tap: .cghidEventTap)
         keyUp.post(tap: .cghidEventTap)
+    }
+
+    private func executeClick(button: String, count: Int) {
+        guard let screen = NSScreen.main else { return }
+        // NSEvent.mouseLocation is bottom-left origin in screen coords; CGEvent uses top-left.
+        let cursor = NSEvent.mouseLocation
+        let cgPoint = CGPoint(x: cursor.x, y: screen.frame.maxY - cursor.y)
+
+        let downType: CGEventType
+        let upType: CGEventType
+        let cgButton: CGMouseButton
+        switch button.lowercased() {
+        case "right": downType = .rightMouseDown; upType = .rightMouseUp; cgButton = .right
+        case "middle": downType = .otherMouseDown; upType = .otherMouseUp; cgButton = .center
+        default: downType = .leftMouseDown; upType = .leftMouseUp; cgButton = .left
+        }
+
+        let source = CGEventSource(stateID: .hidSystemState)
+        let safeCount = max(1, count)
+        for _ in 0..<safeCount {
+            guard let down = CGEvent(mouseEventSource: source, mouseType: downType,
+                                     mouseCursorPosition: cgPoint, mouseButton: cgButton),
+                  let up = CGEvent(mouseEventSource: source, mouseType: upType,
+                                   mouseCursorPosition: cgPoint, mouseButton: cgButton)
+            else { return }
+            down.setIntegerValueField(.mouseEventClickState, value: Int64(safeCount))
+            up.setIntegerValueField(.mouseEventClickState, value: Int64(safeCount))
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+        }
+    }
+
+    private func executeScroll(dx: Double, dy: Double) {
+        // wheel1 = vertical, wheel2 = horizontal in CGEvent's convention
+        guard let event = CGEvent(scrollWheelEvent2Source: CGEventSource(stateID: .hidSystemState),
+                                  units: .pixel,
+                                  wheelCount: 2,
+                                  wheel1: Int32(dy),
+                                  wheel2: Int32(dx),
+                                  wheel3: 0) else { return }
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func executeTypeText(text: String) {
+        guard !text.isEmpty else { return }
+        let source = CGEventSource(stateID: .hidSystemState)
+        for ch in text {
+            let str = String(ch)
+            let utf16 = Array(str.utf16)
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+            else { continue }
+            utf16.withUnsafeBufferPointer { buf in
+                down.keyboardSetUnicodeString(stringLength: buf.count, unicodeString: buf.baseAddress)
+                up.keyboardSetUnicodeString(stringLength: buf.count, unicodeString: buf.baseAddress)
+            }
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+        }
     }
 
     private func executeShell(command: String) {

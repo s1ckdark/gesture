@@ -220,7 +220,7 @@ private struct GestureEditor: View {
                         case .shell:
                             config.action.keys = nil
                             if config.action.command == nil { config.action.command = "" }
-                        case .applescript:
+                        default:
                             break
                         }
                     }
@@ -239,6 +239,15 @@ private struct GestureEditor: View {
                 shellEditor
             case .applescript:
                 Text("AppleScript actions are post-MVP.").font(.caption).foregroundColor(.secondary)
+            case .click:
+                Text("Click action — edit \(config.action.button ?? "left") (×\(config.action.clickCount ?? 1)) in YAML.")
+                    .font(.caption).foregroundColor(.secondary)
+            case .scroll:
+                Text("Scroll action — dx \(Int(config.action.dx ?? 0)) / dy \(Int(config.action.dy ?? 0)). Edit in YAML.")
+                    .font(.caption).foregroundColor(.secondary)
+            case .typeText:
+                Text("Type-text action — text in YAML. Currently: \"\(config.action.text ?? "")\"")
+                    .font(.caption).foregroundColor(.secondary)
             }
         }
         .padding(8)

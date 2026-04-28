@@ -206,7 +206,7 @@ struct AddGestureSheet: View {
                     .frame(minHeight: 50, maxHeight: 80)
                     .background(Color.gray.opacity(0.15))
                     .cornerRadius(4)
-            case .applescript:
+            default:
                 EmptyView()
             }
         }
@@ -240,8 +240,8 @@ struct AddGestureSheet: View {
             action = ActionConfig(type: .hotkey, keys: hotkeyKeys, command: nil, script: nil)
         case .shell:
             action = ActionConfig(type: .shell, keys: nil, command: shellCommand, script: nil)
-        case .applescript:
-            return
+        default:
+            return  // GUI doesn't currently emit other action types
         }
 
         let cfg: GestureConfig

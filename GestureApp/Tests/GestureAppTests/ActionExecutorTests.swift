@@ -24,4 +24,27 @@ final class ActionExecutorTests: XCTestCase {
         let config = ActionConfig(type: .shell, keys: nil, command: "echo hello", script: nil)
         XCTAssertEqual(config.command, "echo hello")
     }
+
+    func testBuildClickAction() {
+        let config = ActionConfig(type: .click, keys: nil, command: nil, script: nil,
+                                  button: "right", clickCount: 2)
+        XCTAssertEqual(config.type, .click)
+        XCTAssertEqual(config.button, "right")
+        XCTAssertEqual(config.clickCount, 2)
+    }
+
+    func testBuildScrollAction() {
+        let config = ActionConfig(type: .scroll, keys: nil, command: nil, script: nil,
+                                  button: nil, clickCount: nil, dx: 0, dy: -120)
+        XCTAssertEqual(config.type, .scroll)
+        XCTAssertEqual(config.dy, -120)
+    }
+
+    func testBuildTypeTextAction() {
+        let config = ActionConfig(type: .typeText, keys: nil, command: nil, script: nil,
+                                  button: nil, clickCount: nil, dx: nil, dy: nil,
+                                  text: "Hello!")
+        XCTAssertEqual(config.type, .typeText)
+        XCTAssertEqual(config.text, "Hello!")
+    }
 }

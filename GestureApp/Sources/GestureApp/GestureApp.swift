@@ -344,6 +344,12 @@ struct GestureApp: App {
             return cmd.count > 60 ? String(cmd.prefix(60)) + "…" : cmd
         case .applescript:
             return "applescript"
+        case .click:
+            return "click \(g.action.button ?? "left") ×\(g.action.clickCount ?? 1)"
+        case .scroll:
+            return "scroll dx=\(Int(g.action.dx ?? 0)) dy=\(Int(g.action.dy ?? 0))"
+        case .typeText:
+            return "type \"\(g.action.text ?? "")\""
         }
     }
 
