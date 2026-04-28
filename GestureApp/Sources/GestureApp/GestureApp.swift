@@ -111,7 +111,7 @@ struct GestureApp: App {
                 loginItem.refresh()
             }
         } label: {
-            Image(systemName: statusBar.status.icon)
+            Image(systemName: statusBar.flashIcon ?? statusBar.status.icon)
         }
         .menuBarExtraStyle(.window)
 

@@ -28,6 +28,10 @@ class StatusBarController: ObservableObject {
     @Published var lastGesture: String = ""
     @Published var isEngineRunning = false
     @Published var hasAccessibility: Bool = Permissions.isAccessibilityGranted()
+    /// Set briefly when a gesture fires; nil otherwise. Drives a transient menu-bar icon flash.
+    @Published var flashIcon: String? = nil
+
+    private var flashWorkItem: DispatchWorkItem?
 
     func refreshPermissions() {
         hasAccessibility = Permissions.isAccessibilityGranted()
@@ -42,7 +46,16 @@ class StatusBarController: ObservableObject {
 
     func gestureRecognized(_ name: String) {
         lastGesture = name
-        // Clear after 2 seconds
+        // Flash the menu-bar icon for 1s
+        flashIcon = "checkmark.seal.fill"
+        flashWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.flashIcon = nil
+        }
+        flashWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: item)
+
+        // Clear "last gesture" text after 2s
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             if self?.lastGesture == name {
                 self?.lastGesture = ""
