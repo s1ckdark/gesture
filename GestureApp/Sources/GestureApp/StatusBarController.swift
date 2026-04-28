@@ -27,6 +27,11 @@ class StatusBarController: ObservableObject {
     @Published var fps: Double = 0
     @Published var lastGesture: String = ""
     @Published var isEngineRunning = false
+    @Published var hasAccessibility: Bool = Permissions.isAccessibilityGranted()
+
+    func refreshPermissions() {
+        hasAccessibility = Permissions.isAccessibilityGranted()
+    }
 
     func updateStatus(_ event: GestureEvent) {
         if event.type == "status" {

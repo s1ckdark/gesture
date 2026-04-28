@@ -31,6 +31,23 @@ struct GestureApp: App {
                         .foregroundColor(.blue)
                 }
 
+                if !statusBar.hasAccessibility {
+                    Divider()
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Accessibility 권한 필요")
+                            .font(.caption)
+                    }
+                    Text("핫키 액션이 작동하지 않습니다.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Button("권한 설정 열기") {
+                        Permissions.requestAccessibility()
+                    }
+                    .controlSize(.small)
+                }
+
                 Divider()
 
                 Button(statusBar.isEngineRunning ? "Stop" : "Start") {
@@ -53,6 +70,7 @@ struct GestureApp: App {
             .padding(8)
             .onAppear {
                 reloadConfig()
+                statusBar.refreshPermissions()
             }
         } label: {
             Image(systemName: statusBar.status.icon)
