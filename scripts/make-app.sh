@@ -8,16 +8,30 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 APP_DIR="$PROJECT_DIR/GestureApp"
 
-CONFIG="${1:-debug}"  # debug | release
+CONFIG="${1:-debug}"  # debug | release | universal
 case "$CONFIG" in
-    debug)   BIN_PATH="$APP_DIR/.build/arm64-apple-macosx/debug/GestureApp" ;;
-    release) BIN_PATH="$APP_DIR/.build/arm64-apple-macosx/release/GestureApp" ;;
-    *) echo "Usage: $0 [debug|release]"; exit 1 ;;
+    debug)
+        BUILD_CONFIG="debug"
+        BUILD_FLAGS=()
+        BIN_PATH="$APP_DIR/.build/arm64-apple-macosx/debug/GestureApp"
+        ;;
+    release)
+        BUILD_CONFIG="release"
+        BUILD_FLAGS=()
+        BIN_PATH="$APP_DIR/.build/arm64-apple-macosx/release/GestureApp"
+        ;;
+    universal)
+        BUILD_CONFIG="release"
+        BUILD_FLAGS=(--arch arm64 --arch x86_64)
+        # SwiftPM emits the universal binary at apple/Products/Release/<target>
+        BIN_PATH="$APP_DIR/.build/apple/Products/Release/GestureApp"
+        ;;
+    *) echo "Usage: $0 [debug|release|universal]"; exit 1 ;;
 esac
 
 echo "Building Swift app ($CONFIG)..."
 cd "$APP_DIR"
-swift build -c "$CONFIG"
+swift build -c "$BUILD_CONFIG" "${BUILD_FLAGS[@]}"
 
 OUT="$PROJECT_DIR/dist/GestureApp.app"
 echo "Creating bundle at $OUT..."
