@@ -17,12 +17,11 @@ struct MotionRecordSheet: View {
     @State private var name: String = ""
     @State private var capturedPoints: [[Double]] = []
     @State private var state: RecorderState = .idle
-    @State private var actionType: ActionType = .hotkey
-    @State private var hotkeyKeys: [String] = []
-    @State private var shellCommand: String = ""
+    @State private var actionConfig: ActionConfig = ActionConfig(
+        type: .hotkey, keys: [], command: nil, script: nil,
+        button: nil, clickCount: nil, dx: nil, dy: nil, text: nil
+    )
     @State private var subscription: AnyCancellable?
-
-    @StateObject private var recorder = HotkeyRecorder()
 
     private let recordSeconds: Double = 3.0
 
@@ -39,7 +38,7 @@ struct MotionRecordSheet: View {
 
     private var canSubmit: Bool {
         !name.isEmpty && nameError == nil && capturedPoints.count >= 5 &&
-            (actionType == .shell ? !shellCommand.isEmpty : !hotkeyKeys.isEmpty)
+            ActionEditorView.isValid(actionConfig)
     }
 
     var body: some View {
@@ -57,7 +56,7 @@ struct MotionRecordSheet: View {
 
             recorderArea
 
-            actionEditor
+            ActionEditorView(config: $actionConfig)
 
             Divider()
             HStack {
@@ -119,46 +118,6 @@ struct MotionRecordSheet: View {
         .cornerRadius(6)
     }
 
-    private var actionEditor: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Action").font(.subheadline)
-            Picker("", selection: $actionType) {
-                Text("Hotkey").tag(ActionType.hotkey)
-                Text("Shell").tag(ActionType.shell)
-            }
-            .pickerStyle(.segmented)
-
-            switch actionType {
-            case .hotkey:
-                HStack {
-                    Text(displayKeys())
-                        .font(.system(.body, design: .monospaced))
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .frame(minWidth: 200, alignment: .leading)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(4)
-                    if recorder.isRecording {
-                        Button("Cancel (Esc)") { recorder.stop() }.controlSize(.small)
-                    } else {
-                        Button("Record") { recorder.start() }.controlSize(.small)
-                    }
-                    Spacer()
-                }
-                .onChange(of: recorder.recordedKeys) { newKeys in
-                    if !newKeys.isEmpty { hotkeyKeys = newKeys }
-                }
-            case .shell:
-                TextEditor(text: $shellCommand)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 50, maxHeight: 80)
-                    .background(Color.gray.opacity(0.15))
-                    .cornerRadius(4)
-            default:
-                EmptyView()
-            }
-        }
-    }
-
     private func startRecording() {
         capturedPoints = []
         state = .countdown(3)
@@ -194,15 +153,7 @@ struct MotionRecordSheet: View {
     }
 
     private func submit() {
-        let action: ActionConfig
-        switch actionType {
-        case .hotkey:
-            action = ActionConfig(type: .hotkey, keys: hotkeyKeys, command: nil, script: nil)
-        case .shell:
-            action = ActionConfig(type: .shell, keys: nil, command: shellCommand, script: nil)
-        default:
-            return
-        }
+        let action = actionConfig
         let cfg = GestureConfig(
             type: "motion_custom",
             emoji: nil,
@@ -215,19 +166,4 @@ struct MotionRecordSheet: View {
         onAdd(name, cfg)
     }
 
-    private func displayKeys() -> String {
-        if recorder.isRecording { return "Press a key combo… (Esc to cancel)" }
-        if hotkeyKeys.isEmpty { return "(none — click Record)" }
-        return hotkeyKeys.map(symbolize).joined(separator: " + ")
-    }
-
-    private func symbolize(_ key: String) -> String {
-        switch key {
-        case "cmd": return "⌘"
-        case "shift": return "⇧"
-        case "ctrl": return "⌃"
-        case "opt": return "⌥"
-        default: return key.uppercased()
-        }
-    }
 }

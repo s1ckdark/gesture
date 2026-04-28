@@ -183,8 +183,6 @@ private struct GestureEditor: View {
     /// Non-nil only for user-added custom poses (those with `pattern`).
     let onDelete: (() -> Void)?
 
-    @StateObject private var recorder = HotkeyRecorder()
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -212,105 +210,13 @@ private struct GestureEditor: View {
                     .help("Remove this custom pose")
                     .controlSize(.small)
                 }
-                Picker("", selection: Binding(
-                    get: { config.action.type },
-                    set: { newType in
-                        config.action.type = newType
-                        switch newType {
-                        case .hotkey:
-                            config.action.command = nil
-                            if config.action.keys == nil { config.action.keys = [] }
-                        case .shell:
-                            config.action.keys = nil
-                            if config.action.command == nil { config.action.command = "" }
-                        default:
-                            break
-                        }
-                    }
-                )) {
-                    Text("Hotkey").tag(ActionType.hotkey)
-                    Text("Shell").tag(ActionType.shell)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 160)
             }
 
-            switch config.action.type {
-            case .hotkey:
-                hotkeyEditor
-            case .shell:
-                shellEditor
-            case .applescript:
-                Text("AppleScript actions are post-MVP.").font(.caption).foregroundColor(.secondary)
-            case .click:
-                Text("Click action — edit \(config.action.button ?? "left") (×\(config.action.clickCount ?? 1)) in YAML.")
-                    .font(.caption).foregroundColor(.secondary)
-            case .scroll:
-                Text("Scroll action — dx \(Int(config.action.dx ?? 0)) / dy \(Int(config.action.dy ?? 0)). Edit in YAML.")
-                    .font(.caption).foregroundColor(.secondary)
-            case .typeText:
-                Text("Type-text action — text in YAML. Currently: \"\(config.action.text ?? "")\"")
-                    .font(.caption).foregroundColor(.secondary)
-            }
+            ActionEditorView(config: $config.action)
         }
         .padding(8)
         .background(Color.gray.opacity(0.08))
         .cornerRadius(6)
-    }
-
-    private var hotkeyEditor: some View {
-        HStack {
-            Text(displayKeys())
-                .font(.system(.body, design: .monospaced))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .frame(minWidth: 180, alignment: .leading)
-                .background(Color.gray.opacity(0.15))
-                .cornerRadius(4)
-
-            if recorder.isRecording {
-                Button("Cancel (Esc)") { recorder.stop() }
-                    .controlSize(.small)
-            } else {
-                Button("Record") { recorder.start() }
-                    .controlSize(.small)
-            }
-
-            Spacer()
-        }
-        .onChange(of: recorder.recordedKeys) { newKeys in
-            if !newKeys.isEmpty {
-                config.action.keys = newKeys
-            }
-        }
-    }
-
-    private var shellEditor: some View {
-        TextEditor(text: Binding(
-            get: { config.action.command ?? "" },
-            set: { config.action.command = $0 }
-        ))
-        .font(.system(.body, design: .monospaced))
-        .frame(minHeight: 50, maxHeight: 80)
-        .background(Color.gray.opacity(0.15))
-        .cornerRadius(4)
-    }
-
-    private func displayKeys() -> String {
-        let keys = config.action.keys ?? []
-        if recorder.isRecording { return "Press a key combo… (Esc to cancel)" }
-        if keys.isEmpty { return "(none — click Record)" }
-        return keys.map(symbolize).joined(separator: " + ")
-    }
-
-    private func symbolize(_ key: String) -> String {
-        switch key {
-        case "cmd": return "⌘"
-        case "shift": return "⇧"
-        case "ctrl": return "⌃"
-        case "opt": return "⌥"
-        default: return key.uppercased()
-        }
     }
 
     private func displayName(_ raw: String) -> String {

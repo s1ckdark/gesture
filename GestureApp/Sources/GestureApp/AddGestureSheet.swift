@@ -20,11 +20,11 @@ struct AddGestureSheet: View {
     @State private var rightFingers: [Bool] = Array(repeating: false, count: 5)
     @State private var useProximity: Bool = false
     @State private var proximity: Double = 0.2
-    @State private var actionType: ActionType = .hotkey
-    @State private var hotkeyKeys: [String] = []
-    @State private var shellCommand: String = ""
+    @State private var actionConfig: ActionConfig = ActionConfig(
+        type: .hotkey, keys: [], command: nil, script: nil,
+        button: nil, clickCount: nil, dx: nil, dy: nil, text: nil
+    )
 
-    @StateObject private var recorder = HotkeyRecorder()
     @EnvironmentObject var preview: PreviewModel
 
     private static let fingerLabels = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
@@ -49,8 +49,7 @@ struct AddGestureSheet: View {
         case .dual:
             patternsOK = leftFingers.contains(true) && rightFingers.contains(true)
         }
-        let actionOK = actionType == .shell ? !shellCommand.isEmpty : !hotkeyKeys.isEmpty
-        return patternsOK && actionOK
+        return patternsOK && ActionEditorView.isValid(actionConfig)
     }
 
     var body: some View {
@@ -94,7 +93,7 @@ struct AddGestureSheet: View {
                 proximityRow
             }
 
-            actionEditor
+            ActionEditorView(config: $actionConfig)
 
             Divider()
 
@@ -176,82 +175,13 @@ struct AddGestureSheet: View {
         }
     }
 
-    private var actionEditor: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Action")
-                .font(.subheadline)
-            Picker("", selection: $actionType) {
-                Text("Hotkey").tag(ActionType.hotkey)
-                Text("Shell").tag(ActionType.shell)
-            }
-            .pickerStyle(.segmented)
-
-            switch actionType {
-            case .hotkey:
-                HStack {
-                    Text(displayKeys())
-                        .font(.system(.body, design: .monospaced))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .frame(minWidth: 200, alignment: .leading)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(4)
-                    if recorder.isRecording {
-                        Button("Cancel (Esc)") { recorder.stop() }
-                            .controlSize(.small)
-                    } else {
-                        Button("Record") { recorder.start() }
-                            .controlSize(.small)
-                    }
-                    Spacer()
-                }
-                .onChange(of: recorder.recordedKeys) { newKeys in
-                    if !newKeys.isEmpty { hotkeyKeys = newKeys }
-                }
-            case .shell:
-                TextEditor(text: $shellCommand)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 50, maxHeight: 80)
-                    .background(Color.gray.opacity(0.15))
-                    .cornerRadius(4)
-            default:
-                EmptyView()
-            }
-        }
-    }
-
     private func patternString(_ states: [Bool]) -> String {
         let bits = states.map { $0 ? "1" : "0" }
         return "[" + bits.joined(separator: ", ") + "]"
     }
 
-    private func displayKeys() -> String {
-        if recorder.isRecording { return "Press a key combo… (Esc to cancel)" }
-        if hotkeyKeys.isEmpty { return "(none — click Record)" }
-        return hotkeyKeys.map(symbolize).joined(separator: " + ")
-    }
-
-    private func symbolize(_ key: String) -> String {
-        switch key {
-        case "cmd": return "⌘"
-        case "shift": return "⇧"
-        case "ctrl": return "⌃"
-        case "opt": return "⌥"
-        default: return key.uppercased()
-        }
-    }
-
     private func submit() {
-        let action: ActionConfig
-        switch actionType {
-        case .hotkey:
-            action = ActionConfig(type: .hotkey, keys: hotkeyKeys, command: nil, script: nil)
-        case .shell:
-            action = ActionConfig(type: .shell, keys: nil, command: shellCommand, script: nil)
-        default:
-            return  // GUI doesn't currently emit other action types
-        }
-
+        let action = actionConfig
         let trimmedEmoji = emoji.trimmingCharacters(in: .whitespaces)
         let emojiValue: String? = trimmedEmoji.isEmpty ? nil : trimmedEmoji
         let cfg: GestureConfig
