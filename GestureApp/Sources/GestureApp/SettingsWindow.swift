@@ -12,6 +12,7 @@ struct SettingsWindow: View {
     @State private var showingAddSheet = false
     @State private var showingPresetSheet = false
     @State private var showingMotionSheet = false
+    @State private var showingMacroSheet = false
 
     var body: some View {
         Group {
@@ -47,6 +48,10 @@ struct SettingsWindow: View {
                     Image(systemName: "waveform.path")
                 }
                 .help("Record a custom motion gesture")
+                Button(action: { showingMacroSheet = true }) {
+                    Image(systemName: "keyboard.badge.eye")
+                }
+                .help("Record a keystroke macro chain")
                 Button(action: { showingAddSheet = true }) {
                     Image(systemName: "plus")
                 }
@@ -112,6 +117,16 @@ struct SettingsWindow: View {
                 onCancel: { showingMotionSheet = false }
             )
             .environmentObject(preview)
+        }
+        .sheet(isPresented: $showingMacroSheet) {
+            RecordMacroSheet(
+                existingNames: existingGestureNames,
+                onAdd: { name, cfg in
+                    addGesture(name: name, cfg: cfg)
+                    showingMacroSheet = false
+                },
+                onCancel: { showingMacroSheet = false }
+            )
         }
     }
 
