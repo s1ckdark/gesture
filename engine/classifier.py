@@ -3,11 +3,11 @@ import time
 from collections import deque
 from typing import Optional
 
-THUMB_TIP, THUMB_IP = 4, 3
-INDEX_TIP, INDEX_PIP = 8, 6
-MIDDLE_TIP, MIDDLE_PIP = 12, 10
-RING_TIP, RING_PIP = 16, 14
-PINKY_TIP, PINKY_PIP = 20, 18
+from engine.landmarks import (
+    INDEX_TIP, THUMB_TIP,
+    finger_states as compute_finger_states,
+    palm_center as compute_palm_center,
+)
 
 # Pose definitions: [thumb, index, middle, ring, pinky]
 STATIC_POSES = {
@@ -33,32 +33,15 @@ class StaticClassifier:
             self.poses.update(custom_poses)
         self.ok_sign_distance = ok_sign_distance
 
-    def _is_finger_extended(self, landmarks, tip_idx: int, pip_idx: int) -> bool:
-        return landmarks[tip_idx][1] < landmarks[pip_idx][1]
-
-    def _is_thumb_extended(self, landmarks) -> bool:
-        return landmarks[THUMB_TIP][0] > landmarks[THUMB_IP][0]
-
-    def _distance(self, p1, p2) -> float:
-        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-    def _get_finger_states(self, landmarks) -> list[int]:
-        thumb = int(self._is_thumb_extended(landmarks))
-        index = int(self._is_finger_extended(landmarks, INDEX_TIP, INDEX_PIP))
-        middle = int(self._is_finger_extended(landmarks, MIDDLE_TIP, MIDDLE_PIP))
-        ring = int(self._is_finger_extended(landmarks, RING_TIP, RING_PIP))
-        pinky = int(self._is_finger_extended(landmarks, PINKY_TIP, PINKY_PIP))
-        return [thumb, index, middle, ring, pinky]
-
     def classify(self, landmarks) -> Optional[str]:
+        states = compute_finger_states(landmarks)
         # Check ok_sign first (thumb+index tips close, middle/ring/pinky extended)
-        thumb_index_dist = self._distance(landmarks[THUMB_TIP], landmarks[INDEX_TIP])
+        ti = landmarks[THUMB_TIP]; ii = landmarks[INDEX_TIP]
+        thumb_index_dist = math.sqrt((ti[0] - ii[0]) ** 2 + (ti[1] - ii[1]) ** 2)
         if thumb_index_dist < self.ok_sign_distance:
-            states = self._get_finger_states(landmarks)
             if states[2] == 1 and states[3] == 1 and states[4] == 1:
                 return "ok_sign"
 
-        states = self._get_finger_states(landmarks)
         for pose_name, pose_states in self.poses.items():
             if states == pose_states:
                 return pose_name
@@ -122,9 +105,7 @@ class DualMotionClassifier:
     def update(self, hands):
         """`hands` is a list of (landmarks, handedness_label)."""
         for landmarks, label in hands:
-            wrist = landmarks[0]
-            mcp = landmarks[9]
-            palm = ((wrist[0] + mcp[0]) / 2, (wrist[1] + mcp[1]) / 2)
+            palm = compute_palm_center(landmarks)
             if label == "Left":
                 self.left.update(palm)
             elif label == "Right":
@@ -176,12 +157,6 @@ class DualHandClassifier:
 
     def __init__(self, dual_poses: Optional[dict] = None):
         self.poses = dict(dual_poses or {})
-        self._single = StaticClassifier()  # reuse finger-state logic
-
-    def _palm_center(self, landmarks) -> tuple:
-        wrist = landmarks[0]
-        mcp = landmarks[9]
-        return ((wrist[0] + mcp[0]) / 2, (wrist[1] + mcp[1]) / 2)
 
     def classify(self, hands) -> Optional[str]:
         """`hands` is a list of (landmarks, handedness_label) tuples."""
@@ -190,8 +165,8 @@ class DualHandClassifier:
         observed = {}
         centers = {}
         for landmarks, label in hands:
-            observed[label] = self._single._get_finger_states(landmarks)
-            centers[label] = self._palm_center(landmarks)
+            observed[label] = compute_finger_states(landmarks)
+            centers[label] = compute_palm_center(landmarks)
         if "Left" not in observed or "Right" not in observed:
             return None
 

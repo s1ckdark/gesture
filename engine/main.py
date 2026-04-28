@@ -20,6 +20,7 @@ from engine.classifier import (
     SequenceClassifier,
     ChordClassifier,
 )
+from engine.landmarks import finger_states as compute_finger_states
 from engine.plugins import PluginManager
 from engine.socket_server import GestureSocketServer
 
@@ -217,7 +218,7 @@ class GestureEngine:
 
                 # Live finger-state HUD updates whenever we just ran detection
                 if self._preview_enabled and landmarks is not None:
-                    states = self.static_classifier._get_finger_states(landmarks)
+                    states = compute_finger_states(landmarks)
                     palm_xy = self.detector.get_palm_center(landmarks)
                     self.socket_server.send_finger_states(states, palm=palm_xy)
 
