@@ -90,6 +90,16 @@ class TestStaticClassifier:
         landmarks = _make_landmarks([1, 0, 0, 0, 0])
         assert classifier.classify(landmarks) == "thumbs_up"
 
+    def test_ok_sign_with_tighter_threshold(self):
+        """A custom (tighter) ok_sign_distance rejects medium-spaced thumb+index."""
+        loose = StaticClassifier(ok_sign_distance=0.10)
+        tight = StaticClassifier(ok_sign_distance=0.03)
+        landmarks = _make_landmarks([1, 1, 1, 1, 1])
+        landmarks[4] = (0.5, 0.4, 0.0)
+        landmarks[8] = (0.55, 0.45, 0.0)  # distance ≈ 0.071
+        assert loose.classify(landmarks) == "ok_sign"
+        assert tight.classify(landmarks) != "ok_sign"
+
 
 class TestMotionTracker:
     def setup_method(self):

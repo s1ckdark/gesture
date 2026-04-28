@@ -26,10 +26,12 @@ class StaticClassifier:
     name (or extend the set with new pose names).
     """
 
-    def __init__(self, custom_poses: Optional[dict] = None):
+    def __init__(self, custom_poses: Optional[dict] = None,
+                 ok_sign_distance: float = 0.08):
         self.poses = dict(STATIC_POSES)
         if custom_poses:
             self.poses.update(custom_poses)
+        self.ok_sign_distance = ok_sign_distance
 
     def _is_finger_extended(self, landmarks, tip_idx: int, pip_idx: int) -> bool:
         return landmarks[tip_idx][1] < landmarks[pip_idx][1]
@@ -51,7 +53,7 @@ class StaticClassifier:
     def classify(self, landmarks) -> Optional[str]:
         # Check ok_sign first (thumb+index tips close, middle/ring/pinky extended)
         thumb_index_dist = self._distance(landmarks[THUMB_TIP], landmarks[INDEX_TIP])
-        if thumb_index_dist < 0.08:
+        if thumb_index_dist < self.ok_sign_distance:
             states = self._get_finger_states(landmarks)
             if states[2] == 1 and states[3] == 1 and states[4] == 1:
                 return "ok_sign"

@@ -93,16 +93,24 @@ class GestureEngine:
                 else:
                     print(f"Warning: invalid dual pattern for gesture '{name}'")
 
-        self.static_classifier = StaticClassifier(custom_poses=custom_poses)
+        self.static_classifier = StaticClassifier(
+            custom_poses=custom_poses,
+            ok_sign_distance=rec_cfg.get("ok_sign_distance", 0.08),
+        )
         self.dual_classifier = DualHandClassifier(dual_poses=dual_poses)
-        self.custom_motion = CustomMotionClassifier(templates=motion_templates)
+        self.custom_motion = CustomMotionClassifier(
+            templates=motion_templates,
+            threshold=rec_cfg.get("motion_template_threshold", 0.12),
+        )
         self.dual_motion = DualMotionClassifier(
             dual_motions=dual_motions,
             buffer_size=rec_cfg["motion_buffer_frames"],
+            threshold=rec_cfg.get("motion_threshold", 0.15),
         )
         self.sequence_classifier = SequenceClassifier(sequences=sequences)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
+            threshold=rec_cfg.get("motion_threshold", 0.15),
         )
         self.cooldown = CooldownManager(
             cooldown_ms=rec_cfg["cooldown_ms"],

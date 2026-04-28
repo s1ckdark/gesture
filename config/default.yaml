@@ -8,6 +8,11 @@ recognition:
   cooldown_ms: 800
   motion_buffer_frames: 20
   static_confirm_frames: 3
+  # Tuning knobs — raise to require tighter / cleaner gestures, lower to
+  # be more lenient. All values are normalized 0..1 image coords.
+  ok_sign_distance: 0.08          # max thumb-tip ↔ index-tip distance for OK sign
+  motion_threshold: 0.15          # min total displacement for a swipe
+  motion_template_threshold: 0.12 # max DTW distance for a custom-motion match
 
 gestures:
   thumbs_up:
