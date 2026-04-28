@@ -17,6 +17,8 @@ struct GestureApp: App {
     @StateObject private var preview = PreviewModel()
     @StateObject private var selfTest = SelfTestModel()
     @StateObject private var stats = StatsManager()
+    @StateObject private var onboarding = OnboardingModel()
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
     @State private var actionExecutor = ActionExecutor()
@@ -126,6 +128,12 @@ struct GestureApp: App {
 
                 Divider()
 
+                Button("Show Onboarding…") {
+                    onboarding.reset()
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "onboarding")
+                }
+
                 Button("Quit") {
                     stopEngine()
                     NSApplication.shared.terminate(nil)
@@ -137,6 +145,12 @@ struct GestureApp: App {
                 reloadConfig()
                 statusBar.refreshPermissions()
                 loginItem.refresh()
+                if !onboardingComplete {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        openWindow(id: "onboarding")
+                    }
+                }
             }
         } label: {
             Image(systemName: statusBar.flashIcon ?? statusBar.status.icon)
@@ -165,6 +179,21 @@ struct GestureApp: App {
                 onClose: { NSApp.keyWindow?.close() }
             )
             .environmentObject(selfTest)
+            .environmentObject(preview)
+        }
+        .windowResizability(.contentSize)
+
+        Window("Welcome to Gesture", id: "onboarding") {
+            OnboardingWindow(
+                isEngineRunning: statusBar.isEngineRunning,
+                hasAccessibility: statusBar.hasAccessibility,
+                onStartEngine: { startEngine() },
+                onComplete: {
+                    onboardingComplete = true
+                    NSApp.keyWindow?.close()
+                }
+            )
+            .environmentObject(onboarding)
             .environmentObject(preview)
         }
         .windowResizability(.contentSize)
@@ -226,6 +255,7 @@ struct GestureApp: App {
             guard let name = event.name else { return }
             statusBar.gestureRecognized(name)
             stats.record(name)
+            onboarding.handleGesture(name)
 
             if soundFeedback {
                 NSSound(named: "Tink")?.play()
