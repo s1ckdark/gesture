@@ -30,6 +30,7 @@ enum ActionType: String, Codable {
     case click
     case scroll
     case typeText = "type_text"
+    case webhook
 }
 
 struct ActionConfig: Codable, Equatable {
@@ -46,9 +47,13 @@ struct ActionConfig: Codable, Equatable {
     var dy: Double?
     /// For type_text: the literal text to type.
     var text: String?
+    /// For webhook: target URL.
+    var url: String?
+    /// For webhook: optional JSON body (string; included as-is in the POST body).
+    var body: String?
 
     enum CodingKeys: String, CodingKey {
-        case type, keys, command, script, button, dx, dy, text
+        case type, keys, command, script, button, dx, dy, text, url, body
         case clickCount = "click_count"
     }
 }

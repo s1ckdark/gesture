@@ -21,6 +21,7 @@ struct ActionEditorView: View {
                 Text("Click").tag(ActionType.click)
                 Text("Scroll").tag(ActionType.scroll)
                 Text("Type").tag(ActionType.typeText)
+                Text("Webhook").tag(ActionType.webhook)
             }
             .pickerStyle(.segmented)
 
@@ -30,6 +31,7 @@ struct ActionEditorView: View {
             case .click:     clickEditor
             case .scroll:    scrollEditor
             case .typeText:  typeTextEditor
+            case .webhook:   webhookEditor
             case .applescript:
                 Text("AppleScript actions are post-MVP.")
                     .font(.caption).foregroundColor(.secondary)
@@ -109,6 +111,26 @@ struct ActionEditorView: View {
         }
     }
 
+    private var webhookEditor: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TextField("https://example.com/hook", text: Binding(
+                get: { config.url ?? "" },
+                set: { config.url = $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            TextEditor(text: Binding(
+                get: { config.body ?? "" },
+                set: { config.body = $0 }
+            ))
+            .font(.system(.body, design: .monospaced))
+            .frame(minHeight: 50, maxHeight: 100)
+            .background(Color.gray.opacity(0.15))
+            .cornerRadius(4)
+            Text("POST request, Content-Type: application/json. Body is sent as-is (leave empty for a ping).")
+                .font(.caption2).foregroundColor(.secondary)
+        }
+    }
+
     private var typeTextEditor: some View {
         TextField("Text to type when fired", text: Binding(
             get: { config.text ?? "" },
@@ -137,30 +159,19 @@ struct ActionEditorView: View {
 
     /// Reset fields that don't apply to the new type so YAML doesn't carry leftovers.
     private func sanitize(for newType: ActionType) {
+        // Clear all type-specific fields, then seed defaults for newType.
+        config.keys = nil; config.command = nil; config.text = nil
+        config.button = nil; config.clickCount = nil
+        config.dx = nil; config.dy = nil
+        config.url = nil; config.body = nil
+
         switch newType {
-        case .hotkey:
-            config.command = nil; config.text = nil; config.button = nil
-            config.clickCount = nil; config.dx = nil; config.dy = nil
-            if config.keys == nil { config.keys = [] }
-        case .shell:
-            config.keys = nil; config.text = nil; config.button = nil
-            config.clickCount = nil; config.dx = nil; config.dy = nil
-            if config.command == nil { config.command = "" }
-        case .click:
-            config.keys = nil; config.command = nil; config.text = nil
-            config.dx = nil; config.dy = nil
-            if config.button == nil { config.button = "left" }
-            if config.clickCount == nil { config.clickCount = 1 }
-        case .scroll:
-            config.keys = nil; config.command = nil; config.text = nil
-            config.button = nil; config.clickCount = nil
-            if config.dx == nil { config.dx = 0 }
-            if config.dy == nil { config.dy = -120 }
-        case .typeText:
-            config.keys = nil; config.command = nil
-            config.button = nil; config.clickCount = nil
-            config.dx = nil; config.dy = nil
-            if config.text == nil { config.text = "" }
+        case .hotkey: config.keys = []
+        case .shell: config.command = ""
+        case .click: config.button = "left"; config.clickCount = 1
+        case .scroll: config.dx = 0; config.dy = -120
+        case .typeText: config.text = ""
+        case .webhook: config.url = ""
         case .applescript: break
         }
     }
@@ -172,6 +183,9 @@ struct ActionEditorView: View {
         case .click: return (config.button ?? "").count > 0
         case .scroll: return (config.dx ?? 0) != 0 || (config.dy ?? 0) != 0
         case .typeText: return !(config.text?.isEmpty ?? true)
+        case .webhook:
+            guard let s = config.url, !s.isEmpty, let u = URL(string: s) else { return false }
+            return u.scheme == "http" || u.scheme == "https"
         case .applescript: return false
         }
     }

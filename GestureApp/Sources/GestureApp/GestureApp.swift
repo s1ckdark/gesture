@@ -360,6 +360,8 @@ struct GestureApp: App {
             return "scroll dx=\(Int(g.action.dx ?? 0)) dy=\(Int(g.action.dy ?? 0))"
         case .typeText:
             return "type \"\(g.action.text ?? "")\""
+        case .webhook:
+            return "POST \(g.action.url ?? "")"
         }
     }
 

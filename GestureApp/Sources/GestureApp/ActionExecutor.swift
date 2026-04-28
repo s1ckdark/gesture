@@ -45,6 +45,8 @@ class ActionExecutor {
             executeScroll(dx: action.dx ?? 0, dy: action.dy ?? 0)
         case .typeText:
             executeTypeText(text: action.text ?? "")
+        case .webhook:
+            executeWebhook(urlString: action.url ?? "", body: action.body)
         }
     }
 
@@ -134,6 +136,27 @@ class ActionExecutor {
             down.post(tap: .cghidEventTap)
             up.post(tap: .cghidEventTap)
         }
+    }
+
+    private func executeWebhook(urlString: String, body: String?) {
+        guard let url = URL(string: urlString) else {
+            NSLog("[Gesture] Invalid webhook URL: \(urlString)")
+            return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Gesture/0.x", forHTTPHeaderField: "User-Agent")
+        if let body, !body.isEmpty {
+            req.httpBody = body.data(using: .utf8)
+        }
+        URLSession.shared.dataTask(with: req) { _, response, error in
+            if let error {
+                NSLog("[Gesture] Webhook failed: \(error.localizedDescription)")
+            } else if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                NSLog("[Gesture] Webhook \(urlString) returned HTTP \(http.statusCode)")
+            }
+        }.resume()
     }
 
     private func executeShell(command: String) {
