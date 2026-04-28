@@ -25,13 +25,21 @@ gestures:
       keys: ["cmd", "c"]
     # Per-app overrides — same gesture, different action depending on
     # the frontmost app's bundle ID. Falls back to the default `action`.
+    # Key syntax:
+    #   "com.foo.App"           — bundle ID only
+    #   "com.foo.App | hint"    — bundle ID + window title contains "hint"
+    #   "* | github.com"        — any app whose window title contains "github.com"
+    # Title matching needs Screen Recording permission for non-self apps.
     app_overrides:
       "com.google.Chrome":
         type: hotkey
-        keys: ["cmd", "t"]   # new tab in Chrome
+        keys: ["cmd", "t"]            # new tab in Chrome
+      "com.google.Chrome | YouTube":
+        type: hotkey
+        keys: ["space"]               # play/pause in YouTube tab
       "com.microsoft.VSCode":
         type: hotkey
-        keys: ["cmd", "n"]   # new file in VS Code
+        keys: ["cmd", "n"]            # new file in VS Code
 
   peace:
     type: static

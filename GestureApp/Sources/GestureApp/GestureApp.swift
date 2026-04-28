@@ -432,15 +432,59 @@ struct GestureApp: App {
         try? ConfigManager.save(cfg, to: ConfigManager.defaultConfigPath())
     }
 
-    /// Pick the app-specific override if the frontmost app's bundle ID matches,
-    /// else fall back to the gesture's default action.
+    /// Pick the app-specific override if the frontmost app's bundle ID (and
+    /// optionally window title substring) match, else fall back to the
+    /// gesture's default action.
+    ///
+    /// Override key syntax:
+    ///   "com.google.Chrome"           — match bundle ID only
+    ///   "com.google.Chrome | github"  — bundle ID AND window title contains
+    ///   "* | github.com"              — any app AND window title contains
     private func resolveAction(for g: GestureConfig) -> ActionConfig {
-        if let overrides = g.appOverrides,
-           let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-           let override = overrides[bundleID] {
-            return override
+        guard let overrides = g.appOverrides, !overrides.isEmpty else { return g.action }
+        let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
+        let title = frontmostWindowTitle() ?? ""
+
+        // Title-qualified keys are more specific; check them first.
+        let sortedKeys = overrides.keys.sorted { ($0.contains("|") ? 1 : 0) > ($1.contains("|") ? 1 : 0) }
+        for key in sortedKeys {
+            if Self.matches(overrideKey: key, bundleID: bundleID, title: title),
+               let override = overrides[key] {
+                return override
+            }
         }
         return g.action
+    }
+
+    private static func matches(overrideKey: String, bundleID: String, title: String) -> Bool {
+        if overrideKey.contains("|") {
+            let parts = overrideKey.split(separator: "|", maxSplits: 1)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2 else { return false }
+            let bundleOK = (parts[0] == "*" || parts[0] == bundleID)
+            let titleOK = !parts[1].isEmpty && title.localizedCaseInsensitiveContains(parts[1])
+            return bundleOK && titleOK
+        }
+        return overrideKey == bundleID
+    }
+
+    /// Returns the frontmost window's title via CGWindowListCopyWindowInfo.
+    /// Requires Screen Recording permission to read titles of OTHER apps; falls
+    /// back to nil if unavailable, so bundle-only overrides keep working.
+    private func frontmostWindowTitle() -> String? {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else { return nil }
+        let targetPID = frontmost.processIdentifier
+        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]]
+        else { return nil }
+        for info in list {
+            guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pid == targetPID,
+                  let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  let title = info[kCGWindowName as String] as? String, !title.isEmpty
+            else { continue }
+            return title
+        }
+        return nil
     }
 
     private func actionDescription(_ g: GestureConfig) -> String {
