@@ -95,6 +95,70 @@ class MotionTracker:
         return result
 
 
+class DualMotionClassifier:
+    """Coordinated two-hand motions (e.g. both swipe outward = 'spread').
+
+    Each hand runs its own MotionTracker. When both fire within sync_window,
+    the (left_motion, right_motion) pair is matched against templates.
+
+    `dual_motions` maps gesture name → {"left": "<dir>", "right": "<dir>"}
+    where <dir> is one of "swipe_left" | "swipe_right" | "swipe_up" | "swipe_down".
+    """
+
+    def __init__(self, dual_motions: Optional[dict] = None,
+                 buffer_size: int = 20, threshold: float = 0.15,
+                 sync_window: float = 0.6):
+        self.dual_motions = dict(dual_motions or {})
+        self.left = MotionTracker(buffer_size=buffer_size, threshold=threshold)
+        self.right = MotionTracker(buffer_size=buffer_size, threshold=threshold)
+        self.sync_window = sync_window
+        self._pending_left: Optional[str] = None
+        self._pending_right: Optional[str] = None
+        self._pending_left_t = 0.0
+        self._pending_right_t = 0.0
+
+    def update(self, hands):
+        """`hands` is a list of (landmarks, handedness_label)."""
+        for landmarks, label in hands:
+            wrist = landmarks[0]
+            mcp = landmarks[9]
+            palm = ((wrist[0] + mcp[0]) / 2, (wrist[1] + mcp[1]) / 2)
+            if label == "Left":
+                self.left.update(palm)
+            elif label == "Right":
+                self.right.update(palm)
+
+    def detect(self) -> Optional[str]:
+        if not self.dual_motions:
+            return None
+        now = time.time()
+
+        l = self.left.detect()
+        r = self.right.detect()
+        if l:
+            self._pending_left = l
+            self._pending_left_t = now
+        if r:
+            self._pending_right = r
+            self._pending_right_t = now
+
+        # Expire stale pendings
+        if self._pending_left and now - self._pending_left_t > self.sync_window:
+            self._pending_left = None
+        if self._pending_right and now - self._pending_right_t > self.sync_window:
+            self._pending_right = None
+
+        if self._pending_left and self._pending_right:
+            if abs(self._pending_left_t - self._pending_right_t) <= self.sync_window:
+                for name, pose in self.dual_motions.items():
+                    if pose.get("left") == self._pending_left and \
+                       pose.get("right") == self._pending_right:
+                        self._pending_left = None
+                        self._pending_right = None
+                        return name
+        return None
+
+
 class DualHandClassifier:
     """Classifies two-handed static poses using per-hand 5-bit finger patterns,
     with optional palm-center proximity gating.

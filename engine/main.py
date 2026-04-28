@@ -15,6 +15,7 @@ from engine.classifier import (
     MotionTracker,
     CooldownManager,
     DualHandClassifier,
+    DualMotionClassifier,
     CustomMotionClassifier,
 )
 from engine.socket_server import GestureSocketServer
@@ -41,6 +42,7 @@ class GestureEngine:
         custom_poses = {}
         dual_poses = {}
         motion_templates = {}
+        dual_motions = {}
         for name, gcfg in (self.config.get("gestures") or {}).items():
             gtype = gcfg.get("type")
             if gtype == "motion_custom":
@@ -58,6 +60,15 @@ class GestureEngine:
                     custom_poses[name] = pattern
                 else:
                     print(f"Warning: invalid pattern for gesture '{name}': {pattern}")
+            elif gtype == "motion_dual":
+                left = gcfg.get("motion_left")
+                right = gcfg.get("motion_right")
+                valid = {"swipe_left", "swipe_right", "swipe_up", "swipe_down"}
+                if left in valid and right in valid:
+                    dual_motions[name] = {"left": left, "right": right}
+                else:
+                    print(f"Warning: motion_dual '{name}' needs motion_left/motion_right "
+                          f"as one of {sorted(valid)}")
             elif gtype == "static_dual":
                 left = gcfg.get("pattern_left")
                 right = gcfg.get("pattern_right")
@@ -76,6 +87,10 @@ class GestureEngine:
         self.static_classifier = StaticClassifier(custom_poses=custom_poses)
         self.dual_classifier = DualHandClassifier(dual_poses=dual_poses)
         self.custom_motion = CustomMotionClassifier(templates=motion_templates)
+        self.dual_motion = DualMotionClassifier(
+            dual_motions=dual_motions,
+            buffer_size=rec_cfg["motion_buffer_frames"],
+        )
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
         )
@@ -165,6 +180,14 @@ class GestureEngine:
                     dual_match = self.dual_classifier.classify(hands_with_label)
                     if dual_match and self.cooldown.should_fire(dual_match, 0.95):
                         self.socket_server.send_gesture(dual_match, 0.95)
+                        self._static_buffer.clear()
+                        continue
+
+                    # Dual MOTION classifier — both hands moving together
+                    self.dual_motion.update(hands_with_label)
+                    dual_motion_match = self.dual_motion.detect()
+                    if dual_motion_match and self.cooldown.should_fire(dual_motion_match, 0.90):
+                        self.socket_server.send_gesture(dual_motion_match, 0.90)
                         self._static_buffer.clear()
                         continue
 

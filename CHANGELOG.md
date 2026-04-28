@@ -6,6 +6,22 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-28
+
+### Added
+- Per-gesture usage stats persisted in UserDefaults; menu bar shows top 3 with counts
+- Dual-hand presets in the library (namaste, double_thumbs, double_fist, double_pinky, diamond)
+- Tag-triggered GitHub Actions release workflow — pushing v*.*.* now auto-builds the universal .dmg and creates the release with notes pulled from CHANGELOG
+- Live finger HUD inside the Add Gesture Sheet — 5-dot row + "Match Current" button to copy live state into pattern toggles
+- GUI motion recorder (Settings → waveform.path icon) — countdown + capture from PreviewModel.palmCenter, saves directly as motion_custom
+- First-run onboarding wizard (welcome → camera → accessibility → demo → done) with replay from menu
+- HID action types — click (button + count), scroll (dx/dy), type_text — backed by CGEvent
+- Two-handed motion (motion_dual) — coordinated swipes (e.g. spread = both swipe outward) with sync window
+
+### Changed
+- Engine `finger_states` event now also carries the live palm center for the motion recorder
+- Models.swift expanded for new action fields and motion_dual schema
+
 ## [0.2.0] - 2026-04-28
 
 ### Added

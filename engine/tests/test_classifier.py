@@ -6,6 +6,7 @@ from engine.classifier import (
     MotionTracker,
     CooldownManager,
     DualHandClassifier,
+    DualMotionClassifier,
     CustomMotionClassifier,
     dtw_distance,
 )
@@ -256,4 +257,52 @@ class TestCustomMotionClassifier:
         clf = CustomMotionClassifier(buffer_size=5)
         for i in range(5):
             clf.update((0.1 * i, 0.5))
+        assert clf.detect() is None
+
+
+class TestDualMotionClassifier:
+    """Helper to build hand tuples with a specific palm center via wrist (idx 0) and mcp (idx 9)."""
+    def _hand(self, palm_xy, label):
+        landmarks = [(palm_xy[0], palm_xy[1], 0.0)] * 21
+        return (landmarks, label)
+
+    def _feed_swipe(self, clf, label, x_start, x_end, n=10):
+        # Linear horizontal sweep from x_start to x_end at y=0.5
+        for i in range(n):
+            t = i / (n - 1)
+            x = x_start + (x_end - x_start) * t
+            clf.update([self._hand((x, 0.5), label)])
+
+    def test_match_both_swipe_left(self):
+        clf = DualMotionClassifier(
+            {"shrink": {"left": "swipe_left", "right": "swipe_left"}},
+            buffer_size=10, threshold=0.15,
+        )
+        self._feed_swipe(clf, "Left", 0.8, 0.2)
+        self._feed_swipe(clf, "Right", 0.8, 0.2)
+        assert clf.detect() == "shrink"
+
+    def test_match_spread(self):
+        # Spread = each hand swipes outward from center (Left ←, Right →)
+        clf = DualMotionClassifier(
+            {"spread": {"left": "swipe_left", "right": "swipe_right"}},
+            buffer_size=10, threshold=0.15,
+        )
+        self._feed_swipe(clf, "Left", 0.5, 0.1)   # left hand swipes left
+        self._feed_swipe(clf, "Right", 0.5, 0.9)  # right hand swipes right
+        assert clf.detect() == "spread"
+
+    def test_no_match_when_directions_differ(self):
+        clf = DualMotionClassifier(
+            {"shrink": {"left": "swipe_left", "right": "swipe_left"}},
+            buffer_size=10, threshold=0.15,
+        )
+        self._feed_swipe(clf, "Left", 0.8, 0.2)   # left swipes left ✓
+        self._feed_swipe(clf, "Right", 0.2, 0.8)  # right swipes right ✗
+        assert clf.detect() is None
+
+    def test_returns_none_with_no_templates(self):
+        clf = DualMotionClassifier({}, buffer_size=10, threshold=0.15)
+        self._feed_swipe(clf, "Left", 0.8, 0.2)
+        self._feed_swipe(clf, "Right", 0.8, 0.2)
         assert clf.detect() is None

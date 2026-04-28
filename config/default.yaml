@@ -94,3 +94,13 @@ gestures:
     action:
       type: shell
       command: "echo -n '❤' | pbcopy"
+
+  # Two-handed motion — each hand's swipe direction must match within
+  # ~0.6s of the other for the gesture to fire.
+  spread:  # both hands swipe outward
+    type: motion_dual
+    motion_left: swipe_left
+    motion_right: swipe_right
+    action:
+      type: hotkey
+      keys: ["cmd", "shift", "."]

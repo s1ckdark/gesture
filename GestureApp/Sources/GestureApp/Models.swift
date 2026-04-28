@@ -65,6 +65,10 @@ struct GestureConfig: Codable, Equatable {
     var proximity: Double?
     /// For type == "motion_custom": list of [x, y] palm-center points captured at recording time.
     var motionTemplate: [[Double]]?
+    /// For type == "motion_dual": left hand's swipe direction (e.g. "swipe_left").
+    var motionLeft: String?
+    /// For type == "motion_dual": right hand's swipe direction.
+    var motionRight: String?
     var action: ActionConfig
 
     enum CodingKeys: String, CodingKey {
@@ -72,6 +76,8 @@ struct GestureConfig: Codable, Equatable {
         case patternLeft = "pattern_left"
         case patternRight = "pattern_right"
         case motionTemplate = "motion_template"
+        case motionLeft = "motion_left"
+        case motionRight = "motion_right"
     }
 }
 

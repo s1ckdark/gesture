@@ -96,6 +96,23 @@ gestures:
 
 Note: handedness is from your perspective (subject), not the camera's. MediaPipe labels them automatically.
 
+## Two-handed motion
+
+Both hands moving together unlocks gestures like spread/pinch. Use `type: motion_dual` with directions for each hand:
+
+```yaml
+gestures:
+  spread:
+    type: motion_dual
+    motion_left: swipe_left   # left hand swipes ←
+    motion_right: swipe_right # right hand swipes →
+    action:
+      type: hotkey
+      keys: ["cmd", "shift", "."]
+```
+
+Both hands' detected swipes must fire within a ~0.6s sync window. Each hand runs its own MotionTracker so the timing doesn't have to be perfect.
+
 ## Custom motion gestures (DTW)
 
 Beyond the built-in left/right swipes, you can record arbitrary 2D palm trajectories and match them via Dynamic Time Warping. Run the recorder with the engine engine venv active:
