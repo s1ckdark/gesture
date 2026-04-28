@@ -1,11 +1,170 @@
 import SwiftUI
 
-// Stub entry point — fully implemented in Task 14.
 @main
 struct GestureApp: App {
+    @StateObject private var statusBar = StatusBarController()
+    @State private var processManager: ProcessManager?
+    @State private var socketClient: SocketClient?
+    @State private var actionExecutor = ActionExecutor()
+    @State private var config: AppConfig?
+    @State private var socketRetryCount = 0
+    private let maxSocketRetries = 5
+
     var body: some Scene {
-        MenuBarExtra("Gesture") {
-            Text("Stub")
+        MenuBarExtra {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: statusBar.status.icon)
+                    Text(statusBar.status.label)
+                }
+                .font(.headline)
+
+                if statusBar.isEngineRunning {
+                    Text("FPS: \(String(format: "%.1f", statusBar.fps))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if !statusBar.lastGesture.isEmpty {
+                    Text("Last: \(statusBar.lastGesture)")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
+
+                Divider()
+
+                Button(statusBar.isEngineRunning ? "Stop" : "Start") {
+                    toggleEngine()
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+
+                Button("Reload Config") {
+                    reloadConfig()
+                }
+
+                Divider()
+
+                Button("Quit") {
+                    stopEngine()
+                    NSApplication.shared.terminate(nil)
+                }
+                .keyboardShortcut("q")
+            }
+            .padding(8)
+            .onAppear {
+                reloadConfig()
+            }
+        } label: {
+            Image(systemName: statusBar.status.icon)
         }
+        .menuBarExtraStyle(.window)
+    }
+
+    private func toggleEngine() {
+        if statusBar.isEngineRunning {
+            stopEngine()
+        } else {
+            startEngine()
+        }
+    }
+
+    private func startEngine() {
+        guard let config else { return }
+
+        let enginePath = findEnginePath()
+
+        let pm = ProcessManager(
+            enginePath: enginePath,
+            configPath: ConfigManager.defaultConfigPath()
+        )
+        pm.onProcessExit = { status in
+            DispatchQueue.main.async {
+                if status != 0 {
+                    statusBar.status = .stopped
+                    statusBar.isEngineRunning = false
+                }
+            }
+        }
+
+        do {
+            try pm.start()
+            processManager = pm
+            statusBar.isEngineRunning = true
+            statusBar.status = .running
+
+            // Connect socket after a brief delay for Python to start
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                connectSocket(config: config)
+            }
+        } catch {
+            print("Failed to start engine: \(error)")
+        }
+    }
+
+    private func connectSocket(config: AppConfig) {
+        let client = SocketClient()
+        client.onGesture = { event in
+            guard let name = event.name else { return }
+            statusBar.gestureRecognized(name)
+
+            if let gestureConfig = config.gestures[name] {
+                actionExecutor.execute(action: gestureConfig.action)
+            }
+        }
+        client.onStatus = { event in
+            statusBar.updateStatus(event)
+        }
+        client.onDisconnect = {
+            statusBar.status = .stopped
+            statusBar.isEngineRunning = false
+        }
+
+        do {
+            try client.connect()
+            socketClient = client
+            socketRetryCount = 0
+        } catch {
+            socketRetryCount += 1
+            if socketRetryCount < maxSocketRetries {
+                print("Socket connection failed (\(socketRetryCount)/\(maxSocketRetries)), retrying...")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    connectSocket(config: config)
+                }
+            } else {
+                print("Socket connection failed after \(maxSocketRetries) attempts. Stopping engine.")
+                stopEngine()
+            }
+        }
+    }
+
+    private func stopEngine() {
+        socketClient?.disconnect()
+        socketClient = nil
+        processManager?.stop()
+        processManager = nil
+        statusBar.status = .stopped
+        statusBar.isEngineRunning = false
+    }
+
+    private func reloadConfig() {
+        do {
+            config = try ConfigManager.load(from: ConfigManager.defaultConfigPath())
+        } catch {
+            print("Config load failed: \(error)")
+        }
+    }
+
+    private func findEnginePath() -> String {
+        let cwd = FileManager.default.currentDirectoryPath
+        let candidates = [
+            "\(cwd)/engine/main.py",
+            Bundle.main.resourcePath.map { "\($0)/engine/main.py" } ?? "",
+        ]
+        for path in candidates {
+            if FileManager.default.fileExists(atPath: path) {
+                return path
+            }
+        }
+        return "\(cwd)/engine/main.py"
     }
 }
