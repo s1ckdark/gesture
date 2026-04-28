@@ -6,6 +6,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Menu-bar-only app: no Dock icon, windows don't open at launch.
         NSApp.setActivationPolicy(.accessory)
     }
+
+    /// Closing the app via ⌘Q, Dock right-click → Quit, or even SIGTERM
+    /// from launchd has to take the camera with it. Kill any live Python
+    /// engine subprocess synchronously before we exit.
+    func applicationWillTerminate(_ notification: Notification) {
+        ProcessManager.terminateAll()
+    }
 }
 
 @main

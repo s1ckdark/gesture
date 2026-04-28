@@ -1,6 +1,14 @@
 import Foundation
 
 class ProcessManager {
+    /// Static registry so applicationWillTerminate can reach every live Python child
+    /// even if the SwiftUI @State that owned the manager has been torn down.
+    private static var activeProcesses: [Process] = []
+    private static let registryQueue = DispatchQueue(label: "gesture.process.registry")
+    /// Set by terminateAll(); termination handlers check this to suppress auto-restart
+    /// during app shutdown.
+    static var isShuttingDown = false
+
     private var process: Process?
     private let enginePath: String
     private let configPath: String
@@ -42,12 +50,20 @@ class ProcessManager {
         process.standardError = logHandle
 
         process.terminationHandler = { [weak self] proc in
+            // Drop from the registry so terminateAll() doesn't double-touch
+            ProcessManager.registryQueue.sync {
+                if let idx = ProcessManager.activeProcesses.firstIndex(where: { $0 === proc }) {
+                    ProcessManager.activeProcesses.remove(at: idx)
+                }
+            }
             guard let self else { return }
             let status = proc.terminationStatus
             self.onProcessExit?(status)
 
-            // Auto-restart on unexpected exit
-            if status != 0 && self.restartCount < self.maxRestarts {
+            // Auto-restart on unexpected exit — but NEVER during app shutdown
+            if !ProcessManager.isShuttingDown
+               && status != 0
+               && self.restartCount < self.maxRestarts {
                 self.restartCount += 1
                 DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
                     try? self.start()
@@ -57,6 +73,30 @@ class ProcessManager {
 
         try process.run()
         self.process = process
+        ProcessManager.registryQueue.sync {
+            ProcessManager.activeProcesses.append(process)
+        }
+    }
+
+    /// Synchronously terminate every live Python child. Called from
+    /// applicationWillTerminate so closing the app via ⌘Q, dock quit, or
+    /// dragging the .app to trash all release the camera.
+    static func terminateAll() {
+        isShuttingDown = true
+        let snapshot = registryQueue.sync { activeProcesses }
+        for p in snapshot where p.isRunning {
+            p.terminate()
+        }
+        // Give them up to ~1.5s to exit cleanly, then SIGKILL stragglers
+        let deadline = Date().addingTimeInterval(1.5)
+        for p in snapshot {
+            while p.isRunning && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+            if p.isRunning {
+                kill(p.processIdentifier, SIGKILL)
+            }
+        }
     }
 
     func stop() {
