@@ -28,6 +28,7 @@ struct GestureApp: App {
     @StateObject private var selfTest = SelfTestModel()
     @StateObject private var stats = StatsManager()
     @StateObject private var profiles = ProfileManager()
+    @StateObject private var hotkeyTracker = HotkeyTracker()
     @StateObject private var onboarding = OnboardingModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var processManager: ProcessManager?
@@ -41,6 +42,8 @@ struct GestureApp: App {
     @AppStorage("soundFeedback") private var soundFeedback = false
     @AppStorage("notifyOnGesture") private var notifyOnGesture = false
     @AppStorage("speakOnGesture") private var speakOnGesture = false
+    @AppStorage("hotkeyTrackingEnabled") private var hotkeyTrackingEnabled = false
+    @State private var showingRecommendations = false
 
     @Environment(\.openWindow) private var openWindow
 
@@ -151,6 +154,20 @@ struct GestureApp: App {
                 Toggle("Speak Gesture Name", isOn: $speakOnGesture)
                     .toggleStyle(.checkbox)
 
+                Toggle("Track Hotkeys (recommendations)", isOn: Binding(
+                    get: { hotkeyTrackingEnabled },
+                    set: { newValue in
+                        hotkeyTrackingEnabled = newValue
+                        if newValue { hotkeyTracker.start() } else { hotkeyTracker.stop() }
+                    }
+                ))
+                .toggleStyle(.checkbox)
+
+                Button("Recommendations…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    showingRecommendations = true
+                }
+
                 Divider()
 
                 Button("Show Onboarding…") {
@@ -171,6 +188,7 @@ struct GestureApp: App {
                 statusBar.refreshPermissions()
                 loginItem.refresh()
                 profiles.refresh()
+                if hotkeyTrackingEnabled { hotkeyTracker.start() }
                 if !onboardingComplete {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         NSApp.activate(ignoringOtherApps: true)
@@ -187,6 +205,15 @@ struct GestureApp: App {
                         reloadConfig()
                     },
                     onClose: { showingProfiles = false }
+                )
+            }
+            .sheet(isPresented: $showingRecommendations) {
+                RecommendationsSheet(
+                    tracker: hotkeyTracker,
+                    availableGestures: (config?.gestures.keys.sorted()) ?? [],
+                    onBind: { gestureName, keys in bindHotkeyToGesture(gestureName: gestureName, keys: keys) },
+                    onClose: { showingRecommendations = false },
+                    boundCombos: boundHotkeyCombos()
                 )
             }
         } label: {
@@ -383,6 +410,26 @@ struct GestureApp: App {
         } catch {
             print("Config load failed: \(error)")
         }
+    }
+
+    private func boundHotkeyCombos() -> Set<String> {
+        guard let cfg = config else { return [] }
+        var set = Set<String>()
+        for (_, g) in cfg.gestures where g.action.type == .hotkey {
+            if let keys = g.action.keys {
+                set.insert(HotkeyTracker.normalize(keys.joined(separator: "+")))
+            }
+        }
+        return set
+    }
+
+    private func bindHotkeyToGesture(gestureName: String, keys: [String]) {
+        guard var cfg = config, var g = cfg.gestures[gestureName] else { return }
+        g.action = ActionConfig(type: .hotkey, keys: keys, command: nil, script: nil)
+        cfg.gestures[gestureName] = g
+        config = cfg
+        // Persist to disk so the change isn't lost on Reload Config.
+        try? ConfigManager.save(cfg, to: ConfigManager.defaultConfigPath())
     }
 
     /// Pick the app-specific override if the frontmost app's bundle ID matches,
