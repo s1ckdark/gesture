@@ -10,7 +10,13 @@ import yaml
 
 from engine.camera import Camera
 from engine.detector import HandDetector
-from engine.classifier import StaticClassifier, MotionTracker, CooldownManager, DualHandClassifier
+from engine.classifier import (
+    StaticClassifier,
+    MotionTracker,
+    CooldownManager,
+    DualHandClassifier,
+    CustomMotionClassifier,
+)
 from engine.socket_server import GestureSocketServer
 
 
@@ -34,9 +40,19 @@ class GestureEngine:
         # Pull any custom static-pose patterns from YAML config.
         custom_poses = {}
         dual_poses = {}
+        motion_templates = {}
         for name, gcfg in (self.config.get("gestures") or {}).items():
             gtype = gcfg.get("type")
-            if gtype == "static" and gcfg.get("pattern"):
+            if gtype == "motion_custom":
+                tpl = gcfg.get("motion_template")
+                if isinstance(tpl, list) and len(tpl) >= 5:
+                    try:
+                        motion_templates[name] = [(float(p[0]), float(p[1])) for p in tpl]
+                    except (TypeError, ValueError, IndexError):
+                        print(f"Warning: invalid motion_template for '{name}'")
+                else:
+                    print(f"Warning: motion_template for '{name}' must have ≥5 points")
+            elif gtype == "static" and gcfg.get("pattern"):
                 pattern = gcfg["pattern"]
                 if isinstance(pattern, list) and len(pattern) == 5 and all(p in (0, 1) for p in pattern):
                     custom_poses[name] = pattern
@@ -59,6 +75,7 @@ class GestureEngine:
 
         self.static_classifier = StaticClassifier(custom_poses=custom_poses)
         self.dual_classifier = DualHandClassifier(dual_poses=dual_poses)
+        self.custom_motion = CustomMotionClassifier(templates=motion_templates)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
         )
@@ -163,13 +180,20 @@ class GestureEngine:
                 else:
                     self._static_buffer.clear()
 
-                # Motion gesture check
+                # Motion gesture check (built-in swipes)
                 palm = self.detector.get_palm_center(landmarks)
                 self.motion_tracker.update(palm)
                 motion_gesture = self.motion_tracker.detect()
                 if motion_gesture:
                     if self.cooldown.should_fire(motion_gesture, 0.90):
                         self.socket_server.send_gesture(motion_gesture, 0.90)
+
+                # Custom motion check (DTW against user templates)
+                self.custom_motion.update(palm)
+                custom_motion = self.custom_motion.detect()
+                if custom_motion:
+                    if self.cooldown.should_fire(custom_motion, 0.85):
+                        self.socket_server.send_gesture(custom_motion, 0.85)
 
         except KeyboardInterrupt:
             pass
@@ -184,6 +208,51 @@ class GestureEngine:
         print("Gesture engine stopped.")
 
 
+def record_motion(name: str, duration: float, config_path: str):
+    """Record a 2D palm-center trajectory for `duration` seconds and print a
+    YAML snippet the user can paste under `gestures:` in their config."""
+    print(f"Recording '{name}' for {duration:.1f}s. Make your motion now…")
+    time.sleep(0.8)
+    print("Recording in 3…", end="", flush=True); time.sleep(1)
+    print(" 2…", end="", flush=True); time.sleep(1)
+    print(" 1… GO", flush=True)
+
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+    cam_cfg = cfg.get("camera", {"device": 0, "resolution": [640, 480]})
+    cam = Camera(device=cam_cfg["device"], width=cam_cfg["resolution"][0],
+                 height=cam_cfg["resolution"][1])
+    det = HandDetector()
+    cam.start()
+
+    points: list = []
+    start = time.time()
+    while time.time() - start < duration:
+        frame = cam.read()
+        if frame is None:
+            continue
+        landmarks = det.detect(frame)
+        if landmarks:
+            points.append(det.get_palm_center(landmarks))
+
+    cam.stop()
+    det.close()
+
+    if len(points) < 5:
+        print(f"\nERROR: only {len(points)} hand frames captured. Try again with better lighting / hand position.")
+        return
+
+    print(f"\nCaptured {len(points)} points. YAML snippet to paste under 'gestures:' in your config:\n")
+    print(f"  {name}:")
+    print("    type: motion_custom")
+    print("    motion_template:")
+    for x, y in points:
+        print(f"      - [{x:.4f}, {y:.4f}]")
+    print("    action:")
+    print("      type: hotkey")
+    print('      keys: ["cmd", "shift", "r"]')
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gesture Recognition Engine")
     parser.add_argument(
@@ -191,7 +260,20 @@ def main():
         default=os.path.expanduser("~/.gesture/config.yaml"),
         help="Path to config file",
     )
+    parser.add_argument(
+        "--record-motion", metavar="NAME",
+        help="Record a custom motion template for NAME and print a YAML snippet.",
+    )
+    parser.add_argument(
+        "--record-duration", type=float, default=3.0,
+        help="Seconds to record when --record-motion is set (default: 3.0)",
+    )
     args = parser.parse_args()
+
+    if args.record_motion:
+        record_motion(args.record_motion, args.record_duration, args.config)
+        return
+
     engine = GestureEngine(args.config)
 
     def handle_signal(sig, frame):

@@ -143,6 +143,72 @@ class DualHandClassifier:
         return None
 
 
+def dtw_distance(seq_a, seq_b) -> float:
+    """Standard O(N*M) Dynamic Time Warping distance between two 2D point sequences,
+    normalized by max(len) so longer sequences don't artificially balloon the cost."""
+    n, m = len(seq_a), len(seq_b)
+    if n == 0 or m == 0:
+        return float("inf")
+
+    inf = float("inf")
+    dp = [[inf] * (m + 1) for _ in range(n + 1)]
+    dp[0][0] = 0.0
+
+    for i in range(1, n + 1):
+        ax, ay = seq_a[i - 1][0], seq_a[i - 1][1]
+        for j in range(1, m + 1):
+            bx, by = seq_b[j - 1][0], seq_b[j - 1][1]
+            cost = math.sqrt((ax - bx) ** 2 + (ay - by) ** 2)
+            dp[i][j] = cost + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+
+    return dp[n][m] / max(n, m)
+
+
+def _normalize_trajectory(points):
+    """Translate so first point is at origin — makes DTW position-invariant."""
+    if not points:
+        return []
+    x0, y0 = points[0][0], points[0][1]
+    return [(p[0] - x0, p[1] - y0) for p in points]
+
+
+class CustomMotionClassifier:
+    """DTW-based matcher for user-recorded motion templates.
+
+    `templates` is a dict: gesture_name → list of (x, y) palm-center points.
+    Buffer the live palm centers, periodically run DTW against every template,
+    and fire when the best distance is below `threshold`.
+    """
+
+    def __init__(self, templates: Optional[dict] = None, threshold: float = 0.12,
+                 buffer_size: int = 30):
+        self.templates = dict(templates or {})
+        self.threshold = threshold
+        self.buffer: deque = deque(maxlen=buffer_size)
+        self.buffer_size = buffer_size
+
+    def update(self, palm: tuple):
+        self.buffer.append(palm)
+
+    def detect(self) -> Optional[str]:
+        if len(self.buffer) < self.buffer_size or not self.templates:
+            return None
+
+        observed = _normalize_trajectory(list(self.buffer))
+        best_name, best_dist = None, float("inf")
+        for name, template in self.templates.items():
+            t_norm = _normalize_trajectory(template)
+            dist = dtw_distance(observed, t_norm)
+            if dist < best_dist:
+                best_dist = dist
+                best_name = name
+
+        if best_name is not None and best_dist < self.threshold:
+            self.buffer.clear()
+            return best_name
+        return None
+
+
 class CooldownManager:
     """Prevents duplicate gesture firing and filters low-confidence results."""
 

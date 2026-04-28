@@ -96,6 +96,32 @@ gestures:
 
 Note: handedness is from your perspective (subject), not the camera's. MediaPipe labels them automatically.
 
+## Custom motion gestures (DTW)
+
+Beyond the built-in left/right swipes, you can record arbitrary 2D palm trajectories and match them via Dynamic Time Warping. Run the recorder with the engine engine venv active:
+
+```bash
+source engine/.venv/bin/activate
+python -m engine.main --record-motion my_circle --record-duration 3
+```
+
+Make your motion during the 3-second window. The engine prints a YAML snippet — paste it under `gestures:` in `~/.gesture/config.yaml`:
+
+```yaml
+gestures:
+  my_circle:
+    type: motion_custom
+    motion_template:
+      - [0.5103, 0.4821]
+      - [0.5237, 0.4654]
+      - ...
+    action:
+      type: hotkey
+      keys: ["cmd", "shift", "r"]
+```
+
+Reload via menu → "Reload Config". The classifier translates each template to start at the origin so the gesture is position-invariant; tweak the threshold (default 0.12) by changing `CustomMotionClassifier(..., threshold=...)` in `engine/main.py` if matches feel too loose or strict.
+
 ## Development
 
 ```bash

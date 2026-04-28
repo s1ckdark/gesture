@@ -1,7 +1,14 @@
 import time
 
 import pytest
-from engine.classifier import StaticClassifier, MotionTracker, CooldownManager, DualHandClassifier
+from engine.classifier import (
+    StaticClassifier,
+    MotionTracker,
+    CooldownManager,
+    DualHandClassifier,
+    CustomMotionClassifier,
+    dtw_distance,
+)
 
 # MediaPipe landmark indices:
 # 0=WRIST, 4=THUMB_TIP, 3=THUMB_IP, 8=INDEX_TIP, 6=INDEX_PIP,
@@ -201,3 +208,52 @@ class TestDualHandClassifier:
             (self._make_with_palm([1, 1, 0, 0, 0], (0.9, 0.5)), "Right"),  # dist=0.8
         ]
         assert clf.classify(hands) is None
+
+
+class TestDTW:
+    def test_identical_sequences_zero_distance(self):
+        seq = [(0.1, 0.1), (0.2, 0.2), (0.3, 0.3)]
+        assert dtw_distance(seq, seq) == 0.0
+
+    def test_distance_increases_with_difference(self):
+        a = [(0.0, 0.0), (0.1, 0.0), (0.2, 0.0)]
+        b = [(0.0, 0.0), (0.1, 0.5), (0.2, 1.0)]  # diverges in y
+        assert dtw_distance(a, b) > 0.0
+
+    def test_empty_sequence_returns_inf(self):
+        assert dtw_distance([], [(0.1, 0.1)]) == float("inf")
+        assert dtw_distance([(0.1, 0.1)], []) == float("inf")
+
+
+class TestCustomMotionClassifier:
+    def test_match_similar_trajectory(self):
+        # Template: smooth rightward arc
+        template = [(i / 30, 0.5 - 0.05 * (i / 30)) for i in range(30)]
+        clf = CustomMotionClassifier({"arc": template}, threshold=0.05, buffer_size=30)
+        # Feed nearly-identical points
+        for p in template:
+            clf.update(p)
+        assert clf.detect() == "arc"
+
+    def test_no_match_for_dissimilar_trajectory(self):
+        template = [(i / 30, 0.5) for i in range(30)]  # straight line
+        clf = CustomMotionClassifier({"line": template}, threshold=0.02, buffer_size=30)
+        # Feed a vertical zigzag instead
+        for i in range(30):
+            clf.update((0.5, 0.1 + 0.5 * (i % 2)))
+        assert clf.detect() is None
+
+    def test_buffer_clears_after_match(self):
+        template = [(i / 30, 0.5) for i in range(30)]
+        clf = CustomMotionClassifier({"line": template}, threshold=0.05, buffer_size=30)
+        for p in template:
+            clf.update(p)
+        assert clf.detect() == "line"
+        # Buffer should be empty now
+        assert clf.detect() is None
+
+    def test_returns_none_with_no_templates(self):
+        clf = CustomMotionClassifier(buffer_size=5)
+        for i in range(5):
+            clf.update((0.1 * i, 0.5))
+        assert clf.detect() is None
