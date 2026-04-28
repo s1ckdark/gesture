@@ -1,4 +1,5 @@
 import math
+import time
 from collections import deque
 from typing import Optional
 
@@ -82,3 +83,25 @@ class MotionTracker:
             self.buffer.clear()
 
         return result
+
+
+class CooldownManager:
+    """Prevents duplicate gesture firing and filters low-confidence results."""
+
+    def __init__(self, cooldown_ms: int = 800, confidence_threshold: float = 0.85):
+        self.cooldown_ms = cooldown_ms
+        self.confidence_threshold = confidence_threshold
+        self._last_fired: dict[str, float] = {}
+
+    def should_fire(self, gesture: str, confidence: float) -> bool:
+        if confidence < self.confidence_threshold:
+            return False
+
+        now = time.time() * 1000  # ms
+        last = self._last_fired.get(gesture, 0)
+
+        if now - last < self.cooldown_ms:
+            return False
+
+        self._last_fired[gesture] = now
+        return True

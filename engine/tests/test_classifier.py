@@ -1,5 +1,7 @@
+import time
+
 import pytest
-from engine.classifier import StaticClassifier, MotionTracker
+from engine.classifier import StaticClassifier, MotionTracker, CooldownManager
 
 # MediaPipe landmark indices:
 # 0=WRIST, 4=THUMB_TIP, 3=THUMB_IP, 8=INDEX_TIP, 6=INDEX_PIP,
@@ -99,3 +101,27 @@ class TestMotionTracker:
         assert self.tracker.detect() == "swipe_left"
         # After detection, buffer should reset
         assert self.tracker.detect() is None
+
+
+class TestCooldownManager:
+    def setup_method(self):
+        self.cooldown = CooldownManager(cooldown_ms=100, confidence_threshold=0.85)
+
+    def test_first_gesture_passes(self):
+        assert self.cooldown.should_fire("thumbs_up", 0.9) is True
+
+    def test_same_gesture_blocked_during_cooldown(self):
+        self.cooldown.should_fire("thumbs_up", 0.9)
+        assert self.cooldown.should_fire("thumbs_up", 0.9) is False
+
+    def test_different_gesture_passes_during_cooldown(self):
+        self.cooldown.should_fire("thumbs_up", 0.9)
+        assert self.cooldown.should_fire("peace", 0.9) is True
+
+    def test_low_confidence_blocked(self):
+        assert self.cooldown.should_fire("thumbs_up", 0.5) is False
+
+    def test_gesture_passes_after_cooldown(self):
+        self.cooldown.should_fire("thumbs_up", 0.9)
+        time.sleep(0.15)  # wait longer than 100ms cooldown
+        assert self.cooldown.should_fire("thumbs_up", 0.9) is True
