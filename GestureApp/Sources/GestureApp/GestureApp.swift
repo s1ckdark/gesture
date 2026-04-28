@@ -357,58 +357,7 @@ struct GestureApp: App {
     private func connectSocket(config: AppConfig) {
         let client = SocketClient()
         client.onGesture = { event in
-            guard let name = event.name else { return }
-
-            // Voice gate: only allow gestures while a recent wake word is in effect
-            if voiceGateEnabled, !voice.isGateOpen {
-                return
-            }
-
-            // Anti-fatigue gating: too many fires too fast → suppress + notify once
-            if antiFatigueEnabled, !fatigue.shouldFire() {
-                if !fatigue.hasNotifiedThisBurst {
-                    fatigue.markNotified()
-                    NotificationManager.shared.notify(
-                        title: "Take a break 🧘",
-                        body: "You've fired many gestures. Resting hand for a minute."
-                    )
-                }
-                return
-            }
-
-            statusBar.gestureRecognized(name)
-            stats.record(name)
-            onboarding.handleGesture(name)
-
-            if soundFeedback {
-                NSSound(named: "Tink")?.play()
-            }
-
-            if speakOnGesture {
-                SpeechManager.shared.announce(name.replacingOccurrences(of: "_", with: " "))
-            }
-
-            // While self-test is running, route gesture events to the test
-            // model and suppress action execution to avoid surprises.
-            if selfTest.state == .running {
-                selfTest.handleGesture(name)
-                return
-            }
-
-            if notifyOnGesture {
-                let g = config.gestures[name]
-                let actionDesc = g.map(actionDescription) ?? "no action"
-                let emoji = g?.emoji.map { "\($0) " } ?? ""
-                NotificationManager.shared.notify(
-                    title: "\(emoji)Gesture: \(name)",
-                    body: actionDesc
-                )
-            }
-
-            if let gestureConfig = config.gestures[name] {
-                let resolved = resolveAction(for: gestureConfig)
-                actionExecutor.execute(action: resolved)
-            }
+            handleGestureEvent(event, config: config)
         }
         client.onStatus = { event in
             statusBar.updateStatus(event)
@@ -463,6 +412,68 @@ struct GestureApp: App {
         } catch {
             print("Config load failed: \(error)")
         }
+    }
+
+    /// Single entry point for every recognized gesture, whether it came from
+    /// the engine socket, the HTTP API, or self-test injection. Runs a small
+    /// pipeline of named guards so the order of feedback channels is visible
+    /// in stack traces and easy to reorder.
+    private func handleGestureEvent(_ event: GestureEvent, config: AppConfig) {
+        guard let name = event.name else { return }
+
+        // 1. Voice gate — only allow while a recent wake word is in effect
+        if voiceGateEnabled, !voice.isGateOpen { return }
+
+        // 2. Anti-fatigue burst suppression
+        if antiFatigueEnabled, !fatigue.shouldFire() {
+            if !fatigue.hasNotifiedThisBurst {
+                fatigue.markNotified()
+                NotificationManager.shared.notify(
+                    title: "Take a break 🧘",
+                    body: "You've fired many gestures. Resting hand for a minute."
+                )
+            }
+            return
+        }
+
+        // 3. Side effects — record, tell SwiftUI, sound + speech feedback
+        runSideEffects(for: name)
+
+        // 4. Self-test sink — if test is in progress, that consumes the event
+        //    and we DON'T fire the bound action.
+        if selfTest.state == .running {
+            selfTest.handleGesture(name)
+            return
+        }
+
+        // 5. Optional toast
+        if notifyOnGesture {
+            postGestureNotification(for: name, in: config)
+        }
+
+        // 6. Resolve + execute the action
+        if let gestureConfig = config.gestures[name] {
+            actionExecutor.execute(action: resolveAction(for: gestureConfig))
+        }
+    }
+
+    private func runSideEffects(for name: String) {
+        statusBar.gestureRecognized(name)
+        stats.record(name)
+        onboarding.handleGesture(name)
+        if soundFeedback {
+            NSSound(named: "Tink")?.play()
+        }
+        if speakOnGesture {
+            SpeechManager.shared.announce(name.replacingOccurrences(of: "_", with: " "))
+        }
+    }
+
+    private func postGestureNotification(for name: String, in config: AppConfig) {
+        let g = config.gestures[name]
+        let body = g.map(actionDescription) ?? "no action"
+        let emoji = g?.emoji.map { "\($0) " } ?? ""
+        NotificationManager.shared.notify(title: "\(emoji)Gesture: \(name)", body: body)
     }
 
     private func startHTTPServer() {
