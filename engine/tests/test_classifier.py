@@ -173,3 +173,31 @@ class TestDualHandClassifier:
             (_make_landmarks([1, 1, 1, 1, 1]), "Right"),
         ]
         assert clf.classify(hands) is None
+
+    def _make_with_palm(self, finger_states, palm_xy):
+        """Helper: landmarks with finger pattern AND specific palm center."""
+        landmarks = _make_landmarks(finger_states)
+        # palm_center = avg(wrist[0], mcp[9])
+        landmarks[0] = (palm_xy[0], palm_xy[1], 0.0)
+        landmarks[9] = (palm_xy[0], palm_xy[1], 0.0)
+        return landmarks
+
+    def test_proximity_match_when_close(self):
+        clf = DualHandClassifier({
+            "heart": {"left": [1, 1, 0, 0, 0], "right": [1, 1, 0, 0, 0], "proximity": 0.2},
+        })
+        hands = [
+            (self._make_with_palm([1, 1, 0, 0, 0], (0.4, 0.5)), "Left"),
+            (self._make_with_palm([1, 1, 0, 0, 0], (0.5, 0.5)), "Right"),  # dist=0.1
+        ]
+        assert clf.classify(hands) == "heart"
+
+    def test_proximity_no_match_when_far(self):
+        clf = DualHandClassifier({
+            "heart": {"left": [1, 1, 0, 0, 0], "right": [1, 1, 0, 0, 0], "proximity": 0.2},
+        })
+        hands = [
+            (self._make_with_palm([1, 1, 0, 0, 0], (0.1, 0.5)), "Left"),
+            (self._make_with_palm([1, 1, 0, 0, 0], (0.9, 0.5)), "Right"),  # dist=0.8
+        ]
+        assert clf.classify(hands) is None

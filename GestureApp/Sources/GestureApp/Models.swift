@@ -40,10 +40,12 @@ struct GestureConfig: Codable, Equatable {
     var patternLeft: [Int]?
     /// For type == "static_dual": pattern of the user's right hand.
     var patternRight: [Int]?
+    /// For type == "static_dual": optional max palm-center distance for the pose to fire.
+    var proximity: Double?
     var action: ActionConfig
 
     enum CodingKeys: String, CodingKey {
-        case type, pattern, action
+        case type, pattern, proximity, action
         case patternLeft = "pattern_left"
         case patternRight = "pattern_right"
     }

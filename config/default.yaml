@@ -85,3 +85,12 @@ gestures:
     action:
       type: hotkey
       keys: ["cmd", "shift", "."]
+
+  heart:  # 🫶 — both hands thumb+index out, palms close together
+    type: static_dual
+    pattern_left:  [1, 1, 0, 0, 0]
+    pattern_right: [1, 1, 0, 0, 0]
+    proximity: 0.18  # max palm-center distance (normalized 0..1)
+    action:
+      type: shell
+      command: "echo -n '❤' | pbcopy"

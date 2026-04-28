@@ -96,28 +96,50 @@ class MotionTracker:
 
 
 class DualHandClassifier:
-    """Classifies two-handed static poses using per-hand 5-bit finger patterns.
+    """Classifies two-handed static poses using per-hand 5-bit finger patterns,
+    with optional palm-center proximity gating.
 
-    `dual_poses` maps gesture name → {"left": [5 bits], "right": [5 bits]}.
-    Both hands must match (by handedness label) for a pose to fire.
+    `dual_poses` maps gesture name → {
+        "left":  [5 bits],
+        "right": [5 bits],
+        "proximity": Optional[float]   # max palm-center distance in normalized coords
+    }
+    Both hands must match (by handedness label); when proximity is set, the
+    palms must also be within that distance for the pose to fire.
     """
 
     def __init__(self, dual_poses: Optional[dict] = None):
         self.poses = dict(dual_poses or {})
         self._single = StaticClassifier()  # reuse finger-state logic
 
+    def _palm_center(self, landmarks) -> tuple:
+        wrist = landmarks[0]
+        mcp = landmarks[9]
+        return ((wrist[0] + mcp[0]) / 2, (wrist[1] + mcp[1]) / 2)
+
     def classify(self, hands) -> Optional[str]:
         """`hands` is a list of (landmarks, handedness_label) tuples."""
         if len(hands) != 2 or not self.poses:
             return None
         observed = {}
+        centers = {}
         for landmarks, label in hands:
             observed[label] = self._single._get_finger_states(landmarks)
+            centers[label] = self._palm_center(landmarks)
         if "Left" not in observed or "Right" not in observed:
             return None
-        for name, patterns in self.poses.items():
-            if observed["Left"] == patterns.get("left") and observed["Right"] == patterns.get("right"):
-                return name
+
+        dx = centers["Left"][0] - centers["Right"][0]
+        dy = centers["Left"][1] - centers["Right"][1]
+        palm_distance = math.sqrt(dx * dx + dy * dy)
+
+        for name, pose in self.poses.items():
+            if observed["Left"] != pose.get("left") or observed["Right"] != pose.get("right"):
+                continue
+            proximity = pose.get("proximity")
+            if proximity is not None and palm_distance > proximity:
+                continue
+            return name
         return None
 
 

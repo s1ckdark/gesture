@@ -47,7 +47,13 @@ class GestureEngine:
                 right = gcfg.get("pattern_right")
                 if (isinstance(left, list) and len(left) == 5 and all(p in (0, 1) for p in left)
                     and isinstance(right, list) and len(right) == 5 and all(p in (0, 1) for p in right)):
-                    dual_poses[name] = {"left": left, "right": right}
+                    pose = {"left": left, "right": right}
+                    if "proximity" in gcfg:
+                        try:
+                            pose["proximity"] = float(gcfg["proximity"])
+                        except (TypeError, ValueError):
+                            print(f"Warning: invalid proximity for '{name}': {gcfg['proximity']}")
+                    dual_poses[name] = pose
                 else:
                     print(f"Warning: invalid dual pattern for gesture '{name}'")
 
