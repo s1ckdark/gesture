@@ -15,6 +15,7 @@ struct GestureApp: App {
     @StateObject private var statusBar = StatusBarController()
     @StateObject private var loginItem = LoginItemController()
     @StateObject private var preview = PreviewModel()
+    @StateObject private var selfTest = SelfTestModel()
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
     @State private var actionExecutor = ActionExecutor()
@@ -84,6 +85,12 @@ struct GestureApp: App {
                 }
                 .disabled(!statusBar.isEngineRunning)
 
+                Button("Self Test…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "selfTest")
+                }
+                .disabled(!statusBar.isEngineRunning)
+
                 Button("Reload Config") {
                     reloadConfig()
                 }
@@ -133,6 +140,25 @@ struct GestureApp: App {
                 .environmentObject(preview)
         }
         .windowResizability(.contentSize)
+
+        Window("Self Test", id: "selfTest") {
+            SelfTestWindow(
+                availableGestures: gestureNamesForTest(),
+                onClose: { NSApp.keyWindow?.close() }
+            )
+            .environmentObject(selfTest)
+            .environmentObject(preview)
+        }
+        .windowResizability(.contentSize)
+    }
+
+    private func gestureNamesForTest() -> [String] {
+        guard let cfg = config else { return [] }
+        // Test single-hand poses + motions; dual gestures are awkward to walk through.
+        return cfg.gestures
+            .filter { $0.value.type == "static" || $0.value.type == "motion" }
+            .keys
+            .sorted()
     }
 
     private func toggleEngine() {
@@ -184,6 +210,13 @@ struct GestureApp: App {
 
             if soundFeedback {
                 NSSound(named: "Tink")?.play()
+            }
+
+            // While self-test is running, route gesture events to the test
+            // model and suppress action execution to avoid surprises.
+            if selfTest.state == .running {
+                selfTest.handleGesture(name)
+                return
             }
 
             if notifyOnGesture {
