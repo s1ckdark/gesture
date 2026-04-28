@@ -6,6 +6,12 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-28
+
+### Fixed
+- Python engine subprocess survived app quit and held the camera locked. AppDelegate.applicationWillTerminate now invokes ProcessManager.terminateAll() (SIGTERM → 1.5s grace → SIGKILL) so any quit path releases the camera.
+- Orphan engine.main processes from previous crashes/installations are swept at app launch via `pkill -f engine.main` in applicationDidFinishLaunching.
+
 ## [0.4.0] - 2026-04-28
 
 ### Added
