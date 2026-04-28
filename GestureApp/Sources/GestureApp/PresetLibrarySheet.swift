@@ -22,9 +22,14 @@ struct PresetLibrarySheet: View {
                 .foregroundColor(.secondary)
 
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(PresetLibrary.all) { preset in
-                        card(preset)
+                VStack(alignment: .leading, spacing: 16) {
+                    sectionHeader("Single-hand")
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(PresetLibrary.single) { card($0) }
+                    }
+                    sectionHeader("Two-handed")
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(PresetLibrary.dual) { card($0) }
                     }
                 }
                 .padding(.vertical, 4)
@@ -47,10 +52,10 @@ struct PresetLibrarySheet: View {
                 Spacer()
             }
             Text(p.description).font(.caption).foregroundColor(.secondary)
-            Text(patternBadge(p.pattern))
+            Text(p.patternBadge)
                 .font(.system(.caption2, design: .monospaced))
                 .padding(.horizontal, 4)
-                .background(Color.blue.opacity(0.12))
+                .background((p.isDual ? Color.purple : Color.blue).opacity(0.12))
                 .cornerRadius(3)
             HStack {
                 Text("Default: \(p.suggestedHotkey.map(symbolize).joined(separator: " + "))")
@@ -69,8 +74,8 @@ struct PresetLibrarySheet: View {
         .cornerRadius(6)
     }
 
-    private func patternBadge(_ pattern: [Int]) -> String {
-        "[" + pattern.map { String($0) }.joined(separator: ",") + "]"
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text).font(.headline).foregroundColor(.secondary)
     }
 
     private func symbolize(_ key: String) -> String {

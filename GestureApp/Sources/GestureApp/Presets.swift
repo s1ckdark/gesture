@@ -1,75 +1,148 @@
 import Foundation
 
+enum PresetKind {
+    case single(pattern: [Int])
+    case dual(left: [Int], right: [Int], proximity: Double?)
+}
+
 struct GesturePreset: Identifiable {
     let id = UUID()
     let key: String        // gesture name to be added (must be alphanumeric/underscore)
     let emoji: String
     let displayName: String
     let description: String
-    let pattern: [Int]
+    let kind: PresetKind
     let suggestedHotkey: [String]
 
     func toConfig() -> GestureConfig {
-        GestureConfig(
-            type: "static",
-            pattern: pattern,
-            patternLeft: nil,
-            patternRight: nil,
-            proximity: nil,
-            action: ActionConfig(
-                type: .hotkey,
-                keys: suggestedHotkey,
-                command: nil,
-                script: nil
-            )
+        let action = ActionConfig(
+            type: .hotkey,
+            keys: suggestedHotkey,
+            command: nil,
+            script: nil
         )
+        switch kind {
+        case .single(let pattern):
+            return GestureConfig(
+                type: "static",
+                pattern: pattern,
+                patternLeft: nil, patternRight: nil,
+                proximity: nil, motionTemplate: nil,
+                action: action
+            )
+        case .dual(let left, let right, let proximity):
+            return GestureConfig(
+                type: "static_dual",
+                pattern: nil,
+                patternLeft: left, patternRight: right,
+                proximity: proximity, motionTemplate: nil,
+                action: action
+            )
+        }
+    }
+
+    var patternBadge: String {
+        switch kind {
+        case .single(let p):
+            return "[" + p.map(String.init).joined(separator: ",") + "]"
+        case .dual(let l, let r, _):
+            let ls = "[" + l.map(String.init).joined(separator: ",") + "]"
+            let rs = "[" + r.map(String.init).joined(separator: ",") + "]"
+            return "L \(ls)  R \(rs)"
+        }
+    }
+
+    var isDual: Bool {
+        if case .dual = kind { return true }
+        return false
     }
 }
 
 enum PresetLibrary {
     /// Curated single-hand poses the user can add to their config with one click.
-    static let all: [GesturePreset] = [
+    static let single: [GesturePreset] = [
         GesturePreset(
             key: "ily", emoji: "🤟",
             displayName: "I Love You",
             description: "Thumb + index + pinky out",
-            pattern: [1, 1, 0, 0, 1],
+            kind: .single(pattern: [1, 1, 0, 0, 1]),
             suggestedHotkey: ["cmd", "shift", "1"]
         ),
         GesturePreset(
             key: "point_up", emoji: "☝️",
             displayName: "Point Up",
             description: "Index only",
-            pattern: [0, 1, 0, 0, 0],
+            kind: .single(pattern: [0, 1, 0, 0, 0]),
             suggestedHotkey: ["cmd", "shift", "u"]
         ),
         GesturePreset(
             key: "l_shape", emoji: "🫵",
             displayName: "L Shape",
             description: "Thumb + index extended",
-            pattern: [1, 1, 0, 0, 0],
+            kind: .single(pattern: [1, 1, 0, 0, 0]),
             suggestedHotkey: ["cmd", "shift", "l"]
         ),
         GesturePreset(
             key: "three_fingers", emoji: "🤟",
             displayName: "Three",
             description: "Index + middle + ring",
-            pattern: [0, 1, 1, 1, 0],
+            kind: .single(pattern: [0, 1, 1, 1, 0]),
             suggestedHotkey: ["cmd", "shift", "3"]
         ),
         GesturePreset(
             key: "four_fingers", emoji: "🖖",
             displayName: "Four",
             description: "All except thumb",
-            pattern: [0, 1, 1, 1, 1],
+            kind: .single(pattern: [0, 1, 1, 1, 1]),
             suggestedHotkey: ["cmd", "shift", "4"]
         ),
         GesturePreset(
             key: "pinky_only", emoji: "🤙",
             displayName: "Pinky Only",
             description: "Pinky finger up",
-            pattern: [0, 0, 0, 0, 1],
+            kind: .single(pattern: [0, 0, 0, 0, 1]),
             suggestedHotkey: ["cmd", "shift", "p"]
         ),
     ]
+
+    /// Curated two-handed poses; some require palms close together (proximity).
+    static let dual: [GesturePreset] = [
+        GesturePreset(
+            key: "namaste", emoji: "🙏",
+            displayName: "Namaste",
+            description: "Palms together, fingers up",
+            kind: .dual(left: [1, 1, 1, 1, 1], right: [1, 1, 1, 1, 1], proximity: 0.10),
+            suggestedHotkey: ["cmd", "opt", "n"]
+        ),
+        GesturePreset(
+            key: "double_thumbs", emoji: "👍👍",
+            displayName: "Double Thumbs Up",
+            description: "Both thumbs up",
+            kind: .dual(left: [1, 0, 0, 0, 0], right: [1, 0, 0, 0, 0], proximity: nil),
+            suggestedHotkey: ["cmd", "opt", "t"]
+        ),
+        GesturePreset(
+            key: "double_fist", emoji: "✊✊",
+            displayName: "Double Fist",
+            description: "Both fists",
+            kind: .dual(left: [0, 0, 0, 0, 0], right: [0, 0, 0, 0, 0], proximity: nil),
+            suggestedHotkey: ["cmd", "opt", "f"]
+        ),
+        GesturePreset(
+            key: "double_pinky", emoji: "🤙🤙",
+            displayName: "Double Pinky",
+            description: "Both pinkies out",
+            kind: .dual(left: [0, 0, 0, 0, 1], right: [0, 0, 0, 0, 1], proximity: nil),
+            suggestedHotkey: ["cmd", "opt", "p"]
+        ),
+        GesturePreset(
+            key: "diamond", emoji: "🔷",
+            displayName: "Diamond",
+            description: "Both index+thumb out, palms close",
+            kind: .dual(left: [1, 1, 0, 0, 0], right: [1, 1, 0, 0, 0], proximity: 0.20),
+            suggestedHotkey: ["cmd", "opt", "d"]
+        ),
+    ]
+
+    static var all: [GesturePreset] { single + dual }
 }
