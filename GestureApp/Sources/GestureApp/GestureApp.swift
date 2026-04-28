@@ -123,6 +123,11 @@ struct GestureApp: App {
                 }
                 .disabled(!statusBar.isEngineRunning)
 
+                Button("Stats…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "stats")
+                }
+
                 Button("Reload Config") {
                     reloadConfig()
                 }
@@ -212,6 +217,12 @@ struct GestureApp: App {
             )
             .environmentObject(selfTest)
             .environmentObject(preview)
+        }
+        .windowResizability(.contentSize)
+
+        Window("Gesture Stats", id: "stats") {
+            StatsWindow()
+                .environmentObject(stats)
         }
         .windowResizability(.contentSize)
 

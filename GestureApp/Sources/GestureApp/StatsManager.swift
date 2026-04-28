@@ -1,13 +1,22 @@
 import Foundation
 import Combine
 
-/// Per-gesture lifetime counts, persisted in UserDefaults.
+struct GestureLogEntry: Identifiable {
+    let id = UUID()
+    let name: String
+    let time: Date
+}
+
+/// Per-gesture lifetime counts (persisted) plus an in-memory rolling log
+/// of the last N events for the activity chart.
 @MainActor
 final class StatsManager: ObservableObject {
     @Published private(set) var counts: [String: Int]
+    @Published private(set) var recentEvents: [GestureLogEntry] = []
 
     private let key = "gestureCounts"
     private let defaults: UserDefaults
+    private let maxRecent = 200
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -16,11 +25,16 @@ final class StatsManager: ObservableObject {
 
     func record(_ gesture: String) {
         counts[gesture, default: 0] += 1
+        recentEvents.append(GestureLogEntry(name: gesture, time: Date()))
+        if recentEvents.count > maxRecent {
+            recentEvents.removeFirst(recentEvents.count - maxRecent)
+        }
         defaults.set(counts, forKey: key)
     }
 
     func reset() {
         counts = [:]
+        recentEvents = []
         defaults.removeObject(forKey: key)
     }
 
