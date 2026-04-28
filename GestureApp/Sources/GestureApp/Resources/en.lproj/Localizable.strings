@@ -1,35 +1,118 @@
-/* Menu bar status */
+/* === Menu bar === */
 "Stopped" = "Stopped";
 "Running" = "Running";
 "Hand Detected" = "Hand Detected";
-
-/* Menu bar actions */
 "Start" = "Start";
 "Stop" = "Stop";
 "Settings…" = "Settings…";
 "Show Camera Preview…" = "Show Camera Preview…";
 "Reload Config" = "Reload Config";
+"Self Test…" = "Self Test…";
+"Stats…" = "Stats…";
+"Show Onboarding…" = "Show Onboarding…";
 "Quit" = "Quit";
 
 /* Toggles */
 "Launch at Login" = "Launch at Login";
 "Sound on Gesture" = "Sound on Gesture";
 "Notify on Gesture" = "Notify on Gesture";
+"Speak Gesture Name" = "Speak Gesture Name";
 
-/* Accessibility warning row */
+/* Top gestures section */
+"Reset Stats" = "Reset Stats";
+
+/* Accessibility warning */
 "Accessibility permission required" = "Accessibility permission required";
 "Hotkey actions will not work." = "Hotkey actions will not work.";
 "Open Permission Settings" = "Open Permission Settings";
 
-/* Preview window */
+/* === Camera Preview === */
 "Streaming" = "Streaming";
 "Inactive" = "Inactive";
 "Waiting for engine frames…" = "Waiting for engine frames…";
 "Close window to stop the stream." = "Close window to stop the stream.";
+"Heatmap" = "Heatmap";
+"Reset" = "Reset";
+"Live fingers:" = "Live fingers:";
 
-/* Settings window */
+/* === Settings === */
 "Gesture Mappings" = "Gesture Mappings";
+"Gesture Settings" = "Gesture Settings";
 "Cancel" = "Cancel";
 "Save" = "Save";
 "Saved ✓" = "Saved ✓";
 "Loading config…" = "Loading config…";
+"App Overrides" = "App Overrides";
+"Add Override" = "Add Override";
+
+/* === Add Gesture / Edit === */
+"New Custom Pose" = "New Custom Pose";
+"Name" = "Name";
+"Emoji (optional)" = "Emoji (optional)";
+"Static (one hand)" = "Static (one hand)";
+"Static Dual (two hands)" = "Static Dual (two hands)";
+"Finger Pattern" = "Finger Pattern";
+"Tick each finger that should be extended." = "Tick each finger that should be extended.";
+"Left Hand" = "Left Hand";
+"Right Hand" = "Right Hand";
+"Require palms close together (proximity)" = "Require palms close together (proximity)";
+"Max distance:" = "Max distance:";
+"Match Current" = "Match Current";
+"Open the Camera Preview window to see live finger state here." = "Open the Camera Preview window to see live finger state here.";
+"Action" = "Action";
+"Add" = "Add";
+"Hotkey" = "Hotkey";
+"Shell" = "Shell";
+"Click" = "Click";
+"Scroll" = "Scroll";
+"Type" = "Type";
+"Webhook" = "Webhook";
+"Record" = "Record";
+"Cancel (Esc)" = "Cancel (Esc)";
+
+/* === Motion Recorder === */
+"Record Motion Gesture" = "Record Motion Gesture";
+"Trace your motion" = "Trace your motion";
+"Engine must be running and the camera preview active. Showing your hand to the camera will enable recording." = "Engine must be running and the camera preview active. Showing your hand to the camera will enable recording.";
+"Start Recording (3s)" = "Start Recording (3s)";
+"Re-record" = "Re-record";
+
+/* === Preset Library === */
+"Preset Library" = "Preset Library";
+"Single-hand" = "Single-hand";
+"Two-handed (static)" = "Two-handed (static)";
+"Two-handed motion" = "Two-handed motion";
+"Already added" = "Already added";
+"Done" = "Done";
+
+/* === Profiles === */
+"Profiles" = "Profiles";
+"Save Current as…" = "Save Current as…";
+"active" = "active";
+"Switch" = "Switch";
+
+/* === Self Test === */
+"Self Test" = "Self Test";
+"Make this gesture:" = "Make this gesture:";
+"Test Complete" = "Test Complete";
+
+/* === Onboarding === */
+"Welcome to Gesture" = "Welcome to Gesture";
+"Get Started" = "Get Started";
+"Camera Access" = "Camera Access";
+"Continue" = "Continue";
+"Accessibility Access" = "Accessibility Access";
+"Try a Gesture" = "Try a Gesture";
+"Run Again" = "Run Again";
+"You're all set!" = "You're all set!";
+
+/* === App Overrides === */
+"Add App Override" = "Add App Override";
+"Edit Override" = "Edit Override";
+"Target App" = "Target App";
+
+/* === Stats === */
+"Gesture Stats" = "Gesture Stats";
+"Lifetime counts" = "Lifetime counts";
+"No gestures recognized yet" = "No gestures recognized yet";
+"Start the engine and make some gestures." = "Start the engine and make some gestures.";

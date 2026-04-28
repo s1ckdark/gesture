@@ -1,35 +1,118 @@
-/* Menu bar status */
+/* === Menu bar === */
 "Stopped" = "정지됨";
 "Running" = "실행 중";
 "Hand Detected" = "손 감지됨";
-
-/* Menu bar actions */
 "Start" = "시작";
 "Stop" = "정지";
 "Settings…" = "설정…";
 "Show Camera Preview…" = "카메라 미리보기…";
 "Reload Config" = "설정 다시 불러오기";
+"Self Test…" = "셀프 테스트…";
+"Stats…" = "통계…";
+"Show Onboarding…" = "온보딩 보기…";
 "Quit" = "종료";
 
 /* Toggles */
 "Launch at Login" = "로그인 시 자동 시작";
 "Sound on Gesture" = "제스처 시 사운드";
 "Notify on Gesture" = "제스처 시 알림";
+"Speak Gesture Name" = "제스처 이름 음성 읽기";
 
-/* Accessibility warning row */
+/* Top gestures */
+"Reset Stats" = "통계 초기화";
+
+/* Accessibility warning */
 "Accessibility permission required" = "Accessibility 권한 필요";
 "Hotkey actions will not work." = "핫키 액션이 작동하지 않습니다.";
 "Open Permission Settings" = "권한 설정 열기";
 
-/* Preview window */
+/* === Camera Preview === */
 "Streaming" = "스트리밍 중";
 "Inactive" = "비활성";
 "Waiting for engine frames…" = "엔진 프레임 대기 중…";
 "Close window to stop the stream." = "창을 닫으면 스트림이 멈춥니다.";
+"Heatmap" = "히트맵";
+"Reset" = "초기화";
+"Live fingers:" = "실시간 손가락:";
 
-/* Settings window */
+/* === Settings === */
 "Gesture Mappings" = "제스처 매핑";
+"Gesture Settings" = "제스처 설정";
 "Cancel" = "취소";
 "Save" = "저장";
 "Saved ✓" = "저장됨 ✓";
 "Loading config…" = "설정 불러오는 중…";
+"App Overrides" = "앱별 재정의";
+"Add Override" = "재정의 추가";
+
+/* === Add Gesture === */
+"New Custom Pose" = "새 사용자 정의 포즈";
+"Name" = "이름";
+"Emoji (optional)" = "이모지 (선택)";
+"Static (one hand)" = "정적 (한 손)";
+"Static Dual (two hands)" = "정적 양손";
+"Finger Pattern" = "손가락 패턴";
+"Tick each finger that should be extended." = "펴진 상태로 둘 손가락을 체크하세요.";
+"Left Hand" = "왼손";
+"Right Hand" = "오른손";
+"Require palms close together (proximity)" = "양 손바닥이 가까워야 함 (proximity)";
+"Max distance:" = "최대 거리:";
+"Match Current" = "현재 손 모양 복사";
+"Open the Camera Preview window to see live finger state here." = "카메라 미리보기 창을 열면 실시간 손가락 상태가 여기 표시됩니다.";
+"Action" = "액션";
+"Add" = "추가";
+"Hotkey" = "핫키";
+"Shell" = "셸";
+"Click" = "클릭";
+"Scroll" = "스크롤";
+"Type" = "타이핑";
+"Webhook" = "웹훅";
+"Record" = "녹화";
+"Cancel (Esc)" = "취소 (Esc)";
+
+/* === Motion Recorder === */
+"Record Motion Gesture" = "모션 제스처 녹화";
+"Trace your motion" = "동작을 그려주세요";
+"Engine must be running and the camera preview active. Showing your hand to the camera will enable recording." = "엔진이 실행 중이고 카메라 미리보기가 활성이어야 합니다. 카메라에 손을 보이면 녹화가 가능해집니다.";
+"Start Recording (3s)" = "녹화 시작 (3초)";
+"Re-record" = "다시 녹화";
+
+/* === Preset Library === */
+"Preset Library" = "프리셋 라이브러리";
+"Single-hand" = "한 손";
+"Two-handed (static)" = "양손 (정적)";
+"Two-handed motion" = "양손 모션";
+"Already added" = "이미 추가됨";
+"Done" = "완료";
+
+/* === Profiles === */
+"Profiles" = "프로필";
+"Save Current as…" = "현재 설정을 저장…";
+"active" = "활성";
+"Switch" = "전환";
+
+/* === Self Test === */
+"Self Test" = "셀프 테스트";
+"Make this gesture:" = "이 제스처를 해보세요:";
+"Test Complete" = "테스트 완료";
+
+/* === Onboarding === */
+"Welcome to Gesture" = "Gesture에 오신 걸 환영합니다";
+"Get Started" = "시작하기";
+"Camera Access" = "카메라 접근";
+"Continue" = "계속";
+"Accessibility Access" = "Accessibility 권한";
+"Try a Gesture" = "제스처 해보기";
+"Run Again" = "다시 실행";
+"You're all set!" = "준비 완료!";
+
+/* === App Overrides === */
+"Add App Override" = "앱 재정의 추가";
+"Edit Override" = "재정의 편집";
+"Target App" = "대상 앱";
+
+/* === Stats === */
+"Gesture Stats" = "제스처 통계";
+"Lifetime counts" = "누적 횟수";
+"No gestures recognized yet" = "아직 인식된 제스처가 없습니다";
+"Start the engine and make some gestures." = "엔진을 시작하고 제스처를 시도해보세요.";
