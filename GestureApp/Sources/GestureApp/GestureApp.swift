@@ -29,6 +29,7 @@ struct GestureApp: App {
     @StateObject private var stats = StatsManager()
     @StateObject private var profiles = ProfileManager()
     @StateObject private var hotkeyTracker = HotkeyTracker()
+    @StateObject private var fatigue = FatigueMonitor()
     @StateObject private var onboarding = OnboardingModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var processManager: ProcessManager?
@@ -43,6 +44,7 @@ struct GestureApp: App {
     @AppStorage("notifyOnGesture") private var notifyOnGesture = false
     @AppStorage("speakOnGesture") private var speakOnGesture = false
     @AppStorage("hotkeyTrackingEnabled") private var hotkeyTrackingEnabled = false
+    @AppStorage("antiFatigueEnabled") private var antiFatigueEnabled = false
     @State private var showingRecommendations = false
 
     @Environment(\.openWindow) private var openWindow
@@ -162,6 +164,9 @@ struct GestureApp: App {
                     }
                 ))
                 .toggleStyle(.checkbox)
+
+                Toggle("Anti-fatigue mode", isOn: $antiFatigueEnabled)
+                    .toggleStyle(.checkbox)
 
                 Button("Recommendations…") {
                     NSApp.activate(ignoringOtherApps: true)
@@ -323,6 +328,19 @@ struct GestureApp: App {
         let client = SocketClient()
         client.onGesture = { event in
             guard let name = event.name else { return }
+
+            // Anti-fatigue gating: too many fires too fast → suppress + notify once
+            if antiFatigueEnabled, !fatigue.shouldFire() {
+                if !fatigue.hasNotifiedThisBurst {
+                    fatigue.markNotified()
+                    NotificationManager.shared.notify(
+                        title: "Take a break 🧘",
+                        body: "You've fired many gestures. Resting hand for a minute."
+                    )
+                }
+                return
+            }
+
             statusBar.gestureRecognized(name)
             stats.record(name)
             onboarding.handleGesture(name)
