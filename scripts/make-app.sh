@@ -27,6 +27,14 @@ mkdir -p "$OUT/Contents/Resources"
 
 cp "$BIN_PATH" "$OUT/Contents/MacOS/GestureApp"
 
+# App icon (generate if missing)
+ICON_SRC="$APP_DIR/Resources/AppIcon.icns"
+if [ ! -f "$ICON_SRC" ]; then
+    echo "Generating app icon..."
+    "$SCRIPT_DIR/make-icon.sh"
+fi
+cp "$ICON_SRC" "$OUT/Contents/Resources/AppIcon.icns"
+
 cat > "$OUT/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -46,6 +54,8 @@ cat > "$OUT/Contents/Info.plist" <<'PLIST'
     <string>0.1</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
