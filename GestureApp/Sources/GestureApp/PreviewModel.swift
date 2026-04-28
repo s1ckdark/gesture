@@ -9,6 +9,8 @@ final class PreviewModel: ObservableObject {
     @Published var isActive: Bool = false
     /// Live finger states [thumb, index, middle, ring, pinky] streamed from the engine.
     @Published var fingerStates: [Int] = []
+    /// Latest palm center [x, y] in normalized image coords.
+    @Published var palmCenter: (Double, Double)?
 
     /// Set by GestureApp once a SocketClient is connected.
     var sendCommand: ((String) -> Void)?
@@ -23,6 +25,7 @@ final class PreviewModel: ObservableObject {
         sendCommand?("preview_off")
         image = nil
         fingerStates = []
+        palmCenter = nil
     }
 
     func ingest(jpegData: Data) {
@@ -32,8 +35,11 @@ final class PreviewModel: ObservableObject {
         }
     }
 
-    func ingest(fingerStates: [Int]) {
+    func ingest(fingerStates: [Int], palm: [Double]? = nil) {
         guard isActive, fingerStates.count == 5 else { return }
         self.fingerStates = fingerStates
+        if let palm, palm.count >= 2 {
+            self.palmCenter = (palm[0], palm[1])
+        }
     }
 }

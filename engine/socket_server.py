@@ -87,11 +87,14 @@ class GestureSocketServer:
             "height": height,
         })
 
-    def send_finger_states(self, states):
-        self._send({
+    def send_finger_states(self, states, palm=None):
+        msg = {
             "type": "finger_states",
             "states": list(states),
-        })
+        }
+        if palm is not None:
+            msg["palm"] = [float(palm[0]), float(palm[1])]
+        self._send(msg)
 
     def _send(self, msg: dict):
         if self._client is None:

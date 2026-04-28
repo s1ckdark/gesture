@@ -11,6 +11,7 @@ struct SettingsWindow: View {
     @State private var saved = false
     @State private var showingAddSheet = false
     @State private var showingPresetSheet = false
+    @State private var showingMotionSheet = false
 
     var body: some View {
         Group {
@@ -42,6 +43,10 @@ struct SettingsWindow: View {
                     Image(systemName: "books.vertical")
                 }
                 .help("Browse preset poses")
+                Button(action: { showingMotionSheet = true }) {
+                    Image(systemName: "waveform.path")
+                }
+                .help("Record a custom motion gesture")
                 Button(action: { showingAddSheet = true }) {
                     Image(systemName: "plus")
                 }
@@ -96,6 +101,17 @@ struct SettingsWindow: View {
                 onAdd: { name, cfg in addGesture(name: name, cfg: cfg) },
                 onClose: { showingPresetSheet = false }
             )
+        }
+        .sheet(isPresented: $showingMotionSheet) {
+            MotionRecordSheet(
+                existingNames: existingGestureNames,
+                onAdd: { name, cfg in
+                    addGesture(name: name, cfg: cfg)
+                    showingMotionSheet = false
+                },
+                onCancel: { showingMotionSheet = false }
+            )
+            .environmentObject(preview)
         }
     }
 
