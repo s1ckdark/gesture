@@ -20,6 +20,7 @@ from engine.classifier import (
     SequenceClassifier,
     ChordClassifier,
 )
+from engine.config_parser import parse_gestures
 from engine.landmarks import finger_states as compute_finger_states
 from engine.plugins import PluginManager
 from engine.socket_server import GestureSocketServer
@@ -43,84 +44,23 @@ class GestureEngine:
         self.detector = HandDetector(use_gpu=rec_cfg.get("use_gpu", False))
         self.detect_every_n = max(1, int(rec_cfg.get("detect_every_n_frames", 1)))
 
-        # Pull any custom static-pose patterns from YAML config.
-        custom_poses = {}
-        dual_poses = {}
-        motion_templates = {}
-        dual_motions = {}
-        sequences = {}
-        chords = {}
-        for name, gcfg in (self.config.get("gestures") or {}).items():
-            gtype = gcfg.get("type")
-            if gtype == "sequence":
-                seq = gcfg.get("sequence")
-                window_ms = gcfg.get("window_ms")
-                if isinstance(seq, list) and len(seq) >= 2 and isinstance(window_ms, int):
-                    sequences[name] = {"sequence": seq, "window_ms": window_ms}
-                else:
-                    print(f"Warning: sequence '{name}' needs 'sequence: [..]' (≥2) and integer 'window_ms'")
-            elif gtype == "chord":
-                gestures_list = gcfg.get("sequence") or gcfg.get("gestures")
-                window_ms = gcfg.get("window_ms")
-                if isinstance(gestures_list, list) and len(gestures_list) >= 2 and isinstance(window_ms, int):
-                    chords[name] = {"gestures": gestures_list, "window_ms": window_ms}
-                else:
-                    print(f"Warning: chord '{name}' needs 'sequence: [..]' (≥2) and integer 'window_ms'")
-            elif gtype == "motion_custom":
-                tpl = gcfg.get("motion_template")
-                if isinstance(tpl, list) and len(tpl) >= 5:
-                    try:
-                        motion_templates[name] = [(float(p[0]), float(p[1])) for p in tpl]
-                    except (TypeError, ValueError, IndexError):
-                        print(f"Warning: invalid motion_template for '{name}'")
-                else:
-                    print(f"Warning: motion_template for '{name}' must have ≥5 points")
-            elif gtype == "static" and gcfg.get("pattern"):
-                pattern = gcfg["pattern"]
-                if isinstance(pattern, list) and len(pattern) == 5 and all(p in (0, 1) for p in pattern):
-                    custom_poses[name] = pattern
-                else:
-                    print(f"Warning: invalid pattern for gesture '{name}': {pattern}")
-            elif gtype == "motion_dual":
-                left = gcfg.get("motion_left")
-                right = gcfg.get("motion_right")
-                valid = {"swipe_left", "swipe_right", "swipe_up", "swipe_down"}
-                if left in valid and right in valid:
-                    dual_motions[name] = {"left": left, "right": right}
-                else:
-                    print(f"Warning: motion_dual '{name}' needs motion_left/motion_right "
-                          f"as one of {sorted(valid)}")
-            elif gtype == "static_dual":
-                left = gcfg.get("pattern_left")
-                right = gcfg.get("pattern_right")
-                if (isinstance(left, list) and len(left) == 5 and all(p in (0, 1) for p in left)
-                    and isinstance(right, list) and len(right) == 5 and all(p in (0, 1) for p in right)):
-                    pose = {"left": left, "right": right}
-                    if "proximity" in gcfg:
-                        try:
-                            pose["proximity"] = float(gcfg["proximity"])
-                        except (TypeError, ValueError):
-                            print(f"Warning: invalid proximity for '{name}': {gcfg['proximity']}")
-                    dual_poses[name] = pose
-                else:
-                    print(f"Warning: invalid dual pattern for gesture '{name}'")
-
+        parsed = parse_gestures(self.config)
         self.static_classifier = StaticClassifier(
-            custom_poses=custom_poses,
+            custom_poses=parsed.custom_poses,
             ok_sign_distance=rec_cfg.get("ok_sign_distance", 0.08),
         )
-        self.dual_classifier = DualHandClassifier(dual_poses=dual_poses)
+        self.dual_classifier = DualHandClassifier(dual_poses=parsed.dual_poses)
         self.custom_motion = CustomMotionClassifier(
-            templates=motion_templates,
+            templates=parsed.motion_templates,
             threshold=rec_cfg.get("motion_template_threshold", 0.12),
         )
         self.dual_motion = DualMotionClassifier(
-            dual_motions=dual_motions,
+            dual_motions=parsed.dual_motions,
             buffer_size=rec_cfg["motion_buffer_frames"],
             threshold=rec_cfg.get("motion_threshold", 0.15),
         )
-        self.sequence_classifier = SequenceClassifier(sequences=sequences)
-        self.chord_classifier = ChordClassifier(chords=chords)
+        self.sequence_classifier = SequenceClassifier(sequences=parsed.sequences)
+        self.chord_classifier = ChordClassifier(chords=parsed.chords)
         self.plugins = PluginManager()
         self.plugins.load()
         self.motion_tracker = MotionTracker(
