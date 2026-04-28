@@ -30,6 +30,7 @@ struct GestureApp: App {
     @StateObject private var profiles = ProfileManager()
     @StateObject private var hotkeyTracker = HotkeyTracker()
     @StateObject private var fatigue = FatigueMonitor()
+    @State private var httpServer = HTTPServer()
     @StateObject private var onboarding = OnboardingModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var processManager: ProcessManager?
@@ -45,6 +46,8 @@ struct GestureApp: App {
     @AppStorage("speakOnGesture") private var speakOnGesture = false
     @AppStorage("hotkeyTrackingEnabled") private var hotkeyTrackingEnabled = false
     @AppStorage("antiFatigueEnabled") private var antiFatigueEnabled = false
+    @AppStorage("httpApiEnabled") private var httpApiEnabled = false
+    @AppStorage("httpApiPort") private var httpApiPort = 14455
     @State private var showingRecommendations = false
 
     @Environment(\.openWindow) private var openWindow
@@ -168,6 +171,15 @@ struct GestureApp: App {
                 Toggle("Anti-fatigue mode", isOn: $antiFatigueEnabled)
                     .toggleStyle(.checkbox)
 
+                Toggle("HTTP API (port \(httpApiPort))", isOn: Binding(
+                    get: { httpApiEnabled },
+                    set: { newValue in
+                        httpApiEnabled = newValue
+                        if newValue { startHTTPServer() } else { httpServer.stop() }
+                    }
+                ))
+                .toggleStyle(.checkbox)
+
                 Button("Recommendations…") {
                     NSApp.activate(ignoringOtherApps: true)
                     showingRecommendations = true
@@ -194,6 +206,7 @@ struct GestureApp: App {
                 loginItem.refresh()
                 profiles.refresh()
                 if hotkeyTrackingEnabled { hotkeyTracker.start() }
+                if httpApiEnabled { startHTTPServer() }
                 if !onboardingComplete {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         NSApp.activate(ignoringOtherApps: true)
@@ -428,6 +441,34 @@ struct GestureApp: App {
         } catch {
             print("Config load failed: \(error)")
         }
+    }
+
+    private func startHTTPServer() {
+        httpServer.onTrigger = { [self] name in fireSyntheticGesture(name) }
+        httpServer.statsProvider = {
+            try? JSONSerialization.data(withJSONObject: stats.counts, options: [.prettyPrinted])
+        }
+        httpServer.configProvider = {
+            guard let cfg = config else { return nil }
+            return try? JSONEncoder().encode(cfg)
+        }
+        do {
+            try httpServer.start(port: UInt16(httpApiPort))
+        } catch {
+            NSLog("[Gesture] HTTP API start failed: \(error.localizedDescription)")
+            httpApiEnabled = false
+        }
+    }
+
+    /// Fires a gesture as if it had been recognized — for HTTP-triggered tests
+    /// or external integrations. Runs through the same resolve+execute path
+    /// (so app overrides + chains apply), but skips anti-fatigue gating since
+    /// the caller is presumed to know what they're doing.
+    private func fireSyntheticGesture(_ name: String) {
+        guard let cfg = config, let g = cfg.gestures[name] else { return }
+        statusBar.gestureRecognized(name)
+        stats.record(name)
+        actionExecutor.execute(action: resolveAction(for: g))
     }
 
     private func boundHotkeyCombos() -> Set<String> {
