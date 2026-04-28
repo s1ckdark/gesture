@@ -8,6 +8,7 @@ struct SettingsWindow: View {
     @State private var draft: AppConfig?
     @State private var saveError: String?
     @State private var saved = false
+    @State private var showingAddSheet = false
 
     var body: some View {
         Group {
@@ -35,6 +36,10 @@ struct SettingsWindow: View {
                 if saved {
                     Text("Saved ✓").foregroundColor(.green).font(.caption)
                 }
+                Button(action: { showingAddSheet = true }) {
+                    Image(systemName: "plus")
+                }
+                .help("Add a new custom static pose")
             }
             .padding(.horizontal)
             .padding(.top)
@@ -71,6 +76,13 @@ struct SettingsWindow: View {
             }
             .padding()
         }
+        .sheet(isPresented: $showingAddSheet) {
+            AddGestureSheet(
+                existingNames: existingGestureNames,
+                onAdd: addGesture,
+                onCancel: { showingAddSheet = false }
+            )
+        }
     }
 
     private func orderedGestureNames(for cfg: AppConfig) -> [String] {
@@ -95,9 +107,26 @@ struct SettingsWindow: View {
                         draft?.gestures[name] = newValue
                         saved = false
                     }
-                )
+                ),
+                onDelete: gesture.pattern != nil ? {
+                    draft?.gestures.removeValue(forKey: name)
+                    saved = false
+                } : nil
             )
         }
+    }
+
+    private var existingGestureNames: Set<String> {
+        guard let d = draft else { return [] }
+        return Set(d.gestures.keys)
+    }
+
+    private func addGesture(name: String, cfg: GestureConfig) {
+        guard var d = draft else { return }
+        d.gestures[name] = cfg
+        draft = d
+        saved = false
+        showingAddSheet = false
     }
 
     private func saveDraft() {
@@ -121,6 +150,8 @@ struct SettingsWindow: View {
 private struct GestureEditor: View {
     let name: String
     @Binding var config: GestureConfig
+    /// Non-nil only for user-added custom poses (those with `pattern`).
+    let onDelete: (() -> Void)?
 
     @StateObject private var recorder = HotkeyRecorder()
 
@@ -132,7 +163,22 @@ private struct GestureEditor: View {
                 Text("(\(config.type))")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                if let pat = config.pattern {
+                    Text(patternBadge(pat))
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+                        .background(Color.blue.opacity(0.12))
+                        .cornerRadius(3)
+                }
                 Spacer()
+                if let onDelete {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                    }
+                    .help("Remove this custom pose")
+                    .controlSize(.small)
+                }
                 Picker("", selection: Binding(
                     get: { config.action.type },
                     set: { newType in
@@ -227,5 +273,9 @@ private struct GestureEditor: View {
 
     private func displayName(_ raw: String) -> String {
         raw.split(separator: "_").map { $0.capitalized }.joined(separator: " ")
+    }
+
+    private func patternBadge(_ pattern: [Int]) -> String {
+        "[" + pattern.map { String($0) }.joined(separator: ",") + "]"
     }
 }
