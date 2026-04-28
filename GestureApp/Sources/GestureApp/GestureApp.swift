@@ -16,6 +16,7 @@ struct GestureApp: App {
     @StateObject private var loginItem = LoginItemController()
     @StateObject private var preview = PreviewModel()
     @StateObject private var selfTest = SelfTestModel()
+    @StateObject private var stats = StatsManager()
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
     @State private var actionExecutor = ActionExecutor()
@@ -47,6 +48,22 @@ struct GestureApp: App {
                     Text("Last: \(statusBar.lastGesture)")
                         .font(.caption)
                         .foregroundColor(.blue)
+                }
+
+                if stats.totalRecognized > 0 {
+                    Divider()
+                    Text("Top gestures (\(stats.totalRecognized) total)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    ForEach(stats.top(3), id: \.name) { entry in
+                        HStack {
+                            Text(entry.name).font(.caption)
+                            Spacer()
+                            Text("\(entry.count)×").font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                    Button("Reset Stats") { stats.reset() }
+                        .controlSize(.small)
                 }
 
                 if !statusBar.hasAccessibility {
@@ -207,6 +224,7 @@ struct GestureApp: App {
         client.onGesture = { event in
             guard let name = event.name else { return }
             statusBar.gestureRecognized(name)
+            stats.record(name)
 
             if soundFeedback {
                 NSSound(named: "Tink")?.play()
