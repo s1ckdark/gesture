@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PreviewWindow: View {
     @EnvironmentObject var preview: PreviewModel
+    @AppStorage("heatmapVisible") private var heatmapVisible = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -21,6 +22,11 @@ struct PreviewWindow: View {
                             .foregroundColor(.gray)
                     }
                 }
+                if heatmapVisible {
+                    heatmapOverlay
+                        .scaleEffect(x: -1, y: 1) // match mirrored frame
+                        .allowsHitTesting(false)
+                }
             }
             .frame(minWidth: 480, minHeight: 360)
             .cornerRadius(6)
@@ -32,9 +38,13 @@ struct PreviewWindow: View {
                 Text(preview.isActive ? "Streaming" : "Inactive")
                     .font(.caption)
                 Spacer()
-                Text("Close window to stop the stream.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Toggle("Heatmap", isOn: $heatmapVisible)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                if heatmapVisible {
+                    Button("Reset") { preview.resetHeatmap() }
+                        .controlSize(.small)
+                }
             }
 
             if !preview.fingerStates.isEmpty {
@@ -63,6 +73,27 @@ struct PreviewWindow: View {
         }
         .onDisappear {
             preview.deactivate()
+        }
+    }
+
+    private var heatmapOverlay: some View {
+        GeometryReader { geo in
+            let cellW = geo.size.width / CGFloat(PreviewModel.heatmapCols)
+            let cellH = geo.size.height / CGFloat(PreviewModel.heatmapRows)
+            let maxV = max(preview.heatmapMax, 1.0)
+
+            ForEach(0..<PreviewModel.heatmapRows, id: \.self) { row in
+                ForEach(0..<PreviewModel.heatmapCols, id: \.self) { col in
+                    let intensity = preview.heatmap[row][col] / maxV
+                    if intensity > 0 {
+                        Rectangle()
+                            .fill(Color.red.opacity(0.15 + intensity * 0.45))
+                            .frame(width: cellW, height: cellH)
+                            .position(x: cellW * (CGFloat(col) + 0.5),
+                                      y: cellH * (CGFloat(row) + 0.5))
+                    }
+                }
+            }
         }
     }
 }
