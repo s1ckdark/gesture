@@ -30,6 +30,7 @@ struct GestureApp: App {
     @StateObject private var profiles = ProfileManager()
     @StateObject private var hotkeyTracker = HotkeyTracker()
     @StateObject private var fatigue = FatigueMonitor()
+    @StateObject private var voice = VoiceTrigger()
     @State private var httpServer = HTTPServer()
     @StateObject private var onboarding = OnboardingModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
@@ -46,6 +47,8 @@ struct GestureApp: App {
     @AppStorage("speakOnGesture") private var speakOnGesture = false
     @AppStorage("hotkeyTrackingEnabled") private var hotkeyTrackingEnabled = false
     @AppStorage("antiFatigueEnabled") private var antiFatigueEnabled = false
+    @AppStorage("voiceGateEnabled") private var voiceGateEnabled = false
+    @AppStorage("voiceTriggerWord") private var voiceTriggerWord = "gesture"
     @AppStorage("httpApiEnabled") private var httpApiEnabled = false
     @AppStorage("httpApiPort") private var httpApiPort = 14455
     @State private var showingRecommendations = false
@@ -170,6 +173,20 @@ struct GestureApp: App {
 
                 Toggle("Anti-fatigue mode", isOn: $antiFatigueEnabled)
                     .toggleStyle(.checkbox)
+
+                Toggle("Voice Gate (\"\(voiceTriggerWord)\")", isOn: Binding(
+                    get: { voiceGateEnabled },
+                    set: { newValue in
+                        voiceGateEnabled = newValue
+                        if newValue {
+                            voice.triggerWord = voiceTriggerWord
+                            voice.start()
+                        } else {
+                            voice.stop()
+                        }
+                    }
+                ))
+                .toggleStyle(.checkbox)
 
                 Toggle("HTTP API (port \(httpApiPort))", isOn: Binding(
                     get: { httpApiEnabled },
@@ -341,6 +358,11 @@ struct GestureApp: App {
         let client = SocketClient()
         client.onGesture = { event in
             guard let name = event.name else { return }
+
+            // Voice gate: only allow gestures while a recent wake word is in effect
+            if voiceGateEnabled, !voice.isGateOpen {
+                return
+            }
 
             // Anti-fatigue gating: too many fires too fast → suppress + notify once
             if antiFatigueEnabled, !fatigue.shouldFire() {

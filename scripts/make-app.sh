@@ -81,6 +81,10 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
     <string>Gesture needs camera access to recognize hand gestures via the Python engine.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Gesture executes shell commands and AppleScript actions you configure for hand gestures.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Gesture's optional voice gate listens for a wake word so gestures only fire when you say it.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Gesture's optional voice gate uses on-device speech recognition to detect a wake word.</string>
 </dict>
 </plist>
 PLIST
