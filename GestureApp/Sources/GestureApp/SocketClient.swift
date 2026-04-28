@@ -6,6 +6,7 @@ class SocketClient {
     private var isConnected = false
     var onGesture: ((GestureEvent) -> Void)?
     var onStatus: ((GestureEvent) -> Void)?
+    var onFrame: ((Data, Int, Int) -> Void)?
     var onDisconnect: (() -> Void)?
 
     init(socketPath: String = "/tmp/gesture.sock") {
@@ -68,6 +69,12 @@ class SocketClient {
                                 switch event.type {
                                 case "gesture": self.onGesture?(event)
                                 case "status": self.onStatus?(event)
+                                case "frame":
+                                    if let b64 = event.data,
+                                       let imgData = Data(base64Encoded: b64),
+                                       let w = event.width, let h = event.height {
+                                        self.onFrame?(imgData, w, h)
+                                    }
                                 default: break
                                 }
                             }
@@ -86,6 +93,14 @@ class SocketClient {
     static func parseMessages(_ data: String) -> [GestureEvent] {
         data.split(separator: "\n").compactMap { line in
             try? parseMessage(String(line))
+        }
+    }
+
+    func sendCommand(action: String) {
+        guard let fh = fileHandle, isConnected else { return }
+        let json = "{\"type\":\"command\",\"action\":\"\(action)\"}\n"
+        if let data = json.data(using: .utf8) {
+            try? fh.write(contentsOf: data)
         }
     }
 

@@ -4,6 +4,8 @@ import signal
 import sys
 import threading
 import time
+
+import cv2
 import yaml
 
 from engine.camera import Camera
@@ -50,8 +52,24 @@ class GestureEngine:
         self.static_confirm_frames = rec_cfg.get("static_confirm_frames", 3)
 
         self.socket_server = GestureSocketServer()
+        self.socket_server.on_command = self._handle_command
         self._running = False
         self._static_buffer: list[str] = []
+        self._preview_enabled = False
+        self._preview_every_n = 3  # send 1 of every 3 frames (~10 fps)
+        self._preview_size = (320, 240)
+        self._preview_quality = 60  # JPEG quality 0..100
+
+    def _handle_command(self, msg: dict):
+        if msg.get("type") != "command":
+            return
+        action = msg.get("action")
+        if action == "preview_on":
+            self._preview_enabled = True
+            print("Preview stream enabled")
+        elif action == "preview_off":
+            self._preview_enabled = False
+            print("Preview stream disabled")
 
     def start(self):
         self._running = True
@@ -83,6 +101,18 @@ class GestureEngine:
                     self.socket_server.send_status(hands_detected, fps)
                     frame_count = 0
                     fps_start = time.time()
+
+                # Preview stream — only when enabled (zero overhead otherwise)
+                if self._preview_enabled and frame_count % self._preview_every_n == 0:
+                    small = cv2.resize(frame, self._preview_size)
+                    bgr = cv2.cvtColor(small, cv2.COLOR_RGB2BGR)
+                    ok, jpg = cv2.imencode(
+                        ".jpg", bgr,
+                        [cv2.IMWRITE_JPEG_QUALITY, self._preview_quality],
+                    )
+                    if ok:
+                        w, h = self._preview_size
+                        self.socket_server.send_frame(jpg.tobytes(), w, h)
 
                 if landmarks is None:
                     self._static_buffer.clear()

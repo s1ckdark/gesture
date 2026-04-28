@@ -7,11 +7,15 @@ struct GestureEvent: Codable {
     let timestamp: Double?
     let handsDetected: Int?
     let fps: Double?
+    /// Base64-encoded JPEG for preview frames (when type == "frame").
+    let data: String?
+    let width: Int?
+    let height: Int?
 
     enum CodingKeys: String, CodingKey {
         case type, name, confidence, timestamp
         case handsDetected = "hands_detected"
-        case fps
+        case fps, data, width, height
     }
 }
 

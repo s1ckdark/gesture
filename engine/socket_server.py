@@ -1,8 +1,9 @@
+import base64
 import json
 import os
 import socket
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 
 class GestureSocketServer:
@@ -13,6 +14,7 @@ class GestureSocketServer:
         self._server: Optional[socket.socket] = None
         self._client: Optional[socket.socket] = None
         self._running = False
+        self.on_command: Optional[Callable[[dict], None]] = None
 
     def start(self):
         # Clean up stale socket
@@ -35,7 +37,9 @@ class GestureSocketServer:
                 break
 
     def _handle_client(self):
-        """Keep connection alive until client disconnects or server stops."""
+        """Keep connection alive until client disconnects or server stops.
+        Parses inbound newline-delimited JSON and dispatches to on_command."""
+        buf = b""
         while self._running and self._client:
             try:
                 self._client.settimeout(0.1)
@@ -43,6 +47,17 @@ class GestureSocketServer:
                     data = self._client.recv(4096)
                     if not data:
                         break  # client disconnected
+                    buf += data
+                    while b"\n" in buf:
+                        line, _, buf = buf.partition(b"\n")
+                        if not line:
+                            continue
+                        try:
+                            msg = json.loads(line.decode())
+                            if self.on_command:
+                                self.on_command(msg)
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            pass
                 except socket.timeout:
                     pass
             except OSError:
@@ -62,6 +77,14 @@ class GestureSocketServer:
             "type": "status",
             "hands_detected": hands_detected,
             "fps": fps,
+        })
+
+    def send_frame(self, jpeg_bytes: bytes, width: int, height: int):
+        self._send({
+            "type": "frame",
+            "data": base64.b64encode(jpeg_bytes).decode("ascii"),
+            "width": width,
+            "height": height,
         })
 
     def _send(self, msg: dict):

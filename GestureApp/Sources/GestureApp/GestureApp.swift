@@ -14,6 +14,7 @@ struct GestureApp: App {
 
     @StateObject private var statusBar = StatusBarController()
     @StateObject private var loginItem = LoginItemController()
+    @StateObject private var preview = PreviewModel()
     @State private var processManager: ProcessManager?
     @State private var socketClient: SocketClient?
     @State private var actionExecutor = ActionExecutor()
@@ -74,6 +75,12 @@ struct GestureApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
 
+                Button("Show Camera Preview…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "preview")
+                }
+                .disabled(!statusBar.isEngineRunning)
+
                 Button("Reload Config") {
                     reloadConfig()
                 }
@@ -109,6 +116,12 @@ struct GestureApp: App {
                 configPath: ConfigManager.defaultConfigPath(),
                 onSave: { reloadConfig() }
             )
+        }
+        .windowResizability(.contentSize)
+
+        Window("Camera Preview", id: "preview") {
+            PreviewWindow()
+                .environmentObject(preview)
         }
         .windowResizability(.contentSize)
     }
@@ -167,15 +180,24 @@ struct GestureApp: App {
         client.onStatus = { event in
             statusBar.updateStatus(event)
         }
+        client.onFrame = { data, _, _ in
+            preview.ingest(jpegData: data)
+        }
         client.onDisconnect = {
             statusBar.status = .stopped
             statusBar.isEngineRunning = false
+            preview.deactivate()
         }
 
         do {
             try client.connect()
             socketClient = client
             socketRetryCount = 0
+            preview.sendCommand = { action in
+                client.sendCommand(action: action)
+            }
+            // If preview window happens to be already open, re-activate the stream.
+            if preview.isActive { client.sendCommand(action: "preview_on") }
         } catch {
             socketRetryCount += 1
             if socketRetryCount < maxSocketRetries {
