@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "GestureApp",
+    defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
@@ -11,7 +12,8 @@ let package = Package(
         .executableTarget(
             name: "GestureApp",
             dependencies: ["Yams"],
-            path: "Sources/GestureApp"
+            path: "Sources/GestureApp",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "GestureAppTests",

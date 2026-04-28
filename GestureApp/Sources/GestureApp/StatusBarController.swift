@@ -13,7 +13,7 @@ enum AppStatus {
         }
     }
 
-    var label: String {
+    var label: LocalizedStringKey {
         switch self {
         case .stopped: return "Stopped"
         case .running: return "Running"

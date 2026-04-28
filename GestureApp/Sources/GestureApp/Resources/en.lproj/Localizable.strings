@@ -1,0 +1,35 @@
+/* Menu bar status */
+"Stopped" = "Stopped";
+"Running" = "Running";
+"Hand Detected" = "Hand Detected";
+
+/* Menu bar actions */
+"Start" = "Start";
+"Stop" = "Stop";
+"Settings…" = "Settings…";
+"Show Camera Preview…" = "Show Camera Preview…";
+"Reload Config" = "Reload Config";
+"Quit" = "Quit";
+
+/* Toggles */
+"Launch at Login" = "Launch at Login";
+"Sound on Gesture" = "Sound on Gesture";
+"Notify on Gesture" = "Notify on Gesture";
+
+/* Accessibility warning row */
+"Accessibility permission required" = "Accessibility permission required";
+"Hotkey actions will not work." = "Hotkey actions will not work.";
+"Open Permission Settings" = "Open Permission Settings";
+
+/* Preview window */
+"Streaming" = "Streaming";
+"Inactive" = "Inactive";
+"Waiting for engine frames…" = "Waiting for engine frames…";
+"Close window to stop the stream." = "Close window to stop the stream.";
+
+/* Settings window */
+"Gesture Mappings" = "Gesture Mappings";
+"Cancel" = "Cancel";
+"Save" = "Save";
+"Saved ✓" = "Saved ✓";
+"Loading config…" = "Loading config…";

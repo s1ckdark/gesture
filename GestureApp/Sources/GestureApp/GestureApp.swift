@@ -53,13 +53,13 @@ struct GestureApp: App {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
-                        Text("Accessibility 권한 필요")
+                        Text("Accessibility permission required")
                             .font(.caption)
                     }
-                    Text("핫키 액션이 작동하지 않습니다.")
+                    Text("Hotkey actions will not work.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Button("권한 설정 열기") {
+                    Button("Open Permission Settings") {
                         Permissions.requestAccessibility()
                     }
                     .controlSize(.small)
