@@ -27,9 +27,13 @@ struct PresetLibrarySheet: View {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(PresetLibrary.single) { card($0) }
                     }
-                    sectionHeader("Two-handed")
+                    sectionHeader("Two-handed (static)")
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(PresetLibrary.dual) { card($0) }
+                    }
+                    sectionHeader("Two-handed motion")
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(PresetLibrary.dualMotion) { card($0) }
                     }
                 }
                 .padding(.vertical, 4)

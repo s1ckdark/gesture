@@ -3,6 +3,7 @@ import Foundation
 enum PresetKind {
     case single(pattern: [Int])
     case dual(left: [Int], right: [Int], proximity: Double?)
+    case dualMotion(motionLeft: String, motionRight: String)
 }
 
 struct GesturePreset: Identifiable {
@@ -28,6 +29,7 @@ struct GesturePreset: Identifiable {
                 pattern: pattern,
                 patternLeft: nil, patternRight: nil,
                 proximity: nil, motionTemplate: nil,
+                motionLeft: nil, motionRight: nil,
                 action: action
             )
         case .dual(let left, let right, let proximity):
@@ -36,6 +38,16 @@ struct GesturePreset: Identifiable {
                 pattern: nil,
                 patternLeft: left, patternRight: right,
                 proximity: proximity, motionTemplate: nil,
+                motionLeft: nil, motionRight: nil,
+                action: action
+            )
+        case .dualMotion(let mLeft, let mRight):
+            return GestureConfig(
+                type: "motion_dual",
+                pattern: nil,
+                patternLeft: nil, patternRight: nil,
+                proximity: nil, motionTemplate: nil,
+                motionLeft: mLeft, motionRight: mRight,
                 action: action
             )
         }
@@ -49,12 +61,26 @@ struct GesturePreset: Identifiable {
             let ls = "[" + l.map(String.init).joined(separator: ",") + "]"
             let rs = "[" + r.map(String.init).joined(separator: ",") + "]"
             return "L \(ls)  R \(rs)"
+        case .dualMotion(let mLeft, let mRight):
+            return "L \(arrow(mLeft))  R \(arrow(mRight))"
         }
     }
 
     var isDual: Bool {
-        if case .dual = kind { return true }
-        return false
+        switch kind {
+        case .single: return false
+        case .dual, .dualMotion: return true
+        }
+    }
+
+    private func arrow(_ direction: String) -> String {
+        switch direction {
+        case "swipe_left": return "←"
+        case "swipe_right": return "→"
+        case "swipe_up": return "↑"
+        case "swipe_down": return "↓"
+        default: return direction
+        }
     }
 }
 
@@ -144,5 +170,37 @@ enum PresetLibrary {
         ),
     ]
 
-    static var all: [GesturePreset] { single + dual }
+    /// Two-handed motion presets: each hand's swipe direction must match.
+    static let dualMotion: [GesturePreset] = [
+        GesturePreset(
+            key: "spread", emoji: "🌐",
+            displayName: "Spread Outward",
+            description: "Both hands swipe away from center",
+            kind: .dualMotion(motionLeft: "swipe_left", motionRight: "swipe_right"),
+            suggestedHotkey: ["cmd", "shift", "."]
+        ),
+        GesturePreset(
+            key: "pinch", emoji: "🤏",
+            displayName: "Pinch Inward",
+            description: "Both hands swipe toward center",
+            kind: .dualMotion(motionLeft: "swipe_right", motionRight: "swipe_left"),
+            suggestedHotkey: ["cmd", "shift", "z"]
+        ),
+        GesturePreset(
+            key: "page_right", emoji: "📃",
+            displayName: "Page Right",
+            description: "Both hands swipe right",
+            kind: .dualMotion(motionLeft: "swipe_right", motionRight: "swipe_right"),
+            suggestedHotkey: ["cmd", "right"]
+        ),
+        GesturePreset(
+            key: "page_left", emoji: "📃",
+            displayName: "Page Left",
+            description: "Both hands swipe left",
+            kind: .dualMotion(motionLeft: "swipe_left", motionRight: "swipe_left"),
+            suggestedHotkey: ["cmd", "left"]
+        ),
+    ]
+
+    static var all: [GesturePreset] { single + dual + dualMotion }
 }
