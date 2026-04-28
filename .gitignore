@@ -14,6 +14,9 @@ GestureApp/.swiftpm/
 *.xcworkspace
 DerivedData/
 
+# Build output
+dist/
+
 # macOS
 .DS_Store
 
