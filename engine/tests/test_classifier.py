@@ -8,6 +8,7 @@ from engine.classifier import (
     DualHandClassifier,
     DualMotionClassifier,
     CustomMotionClassifier,
+    SequenceClassifier,
     dtw_distance,
 )
 
@@ -305,4 +306,48 @@ class TestDualMotionClassifier:
         clf = DualMotionClassifier({}, buffer_size=10, threshold=0.15)
         self._feed_swipe(clf, "Left", 0.8, 0.2)
         self._feed_swipe(clf, "Right", 0.8, 0.2)
+        assert clf.detect() is None
+
+
+class TestSequenceClassifier:
+    def test_match_in_order_within_window(self):
+        clf = SequenceClassifier({
+            "combo": {"sequence": ["thumbs_up", "peace", "fist"], "window_ms": 3000},
+        })
+        clf.record("thumbs_up")
+        clf.record("peace")
+        clf.record("fist")
+        assert clf.detect() == "combo"
+
+    def test_no_match_wrong_order(self):
+        clf = SequenceClassifier({
+            "combo": {"sequence": ["thumbs_up", "peace"], "window_ms": 3000},
+        })
+        clf.record("peace")
+        clf.record("thumbs_up")
+        assert clf.detect() is None
+
+    def test_no_match_outside_window(self):
+        clf = SequenceClassifier({
+            "combo": {"sequence": ["thumbs_up", "peace"], "window_ms": 100},
+        })
+        clf.record("thumbs_up")
+        time.sleep(0.15)  # > window
+        clf.record("peace")
+        assert clf.detect() is None
+
+    def test_clears_after_match(self):
+        clf = SequenceClassifier({
+            "combo": {"sequence": ["a", "b"], "window_ms": 3000},
+        })
+        clf.record("a")
+        clf.record("b")
+        assert clf.detect() == "combo"
+        # Record again — buffer was cleared, single record can't match
+        clf.record("b")
+        assert clf.detect() is None
+
+    def test_returns_none_with_no_sequences(self):
+        clf = SequenceClassifier()
+        clf.record("anything")
         assert clf.detect() is None

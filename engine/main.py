@@ -17,6 +17,7 @@ from engine.classifier import (
     DualHandClassifier,
     DualMotionClassifier,
     CustomMotionClassifier,
+    SequenceClassifier,
 )
 from engine.socket_server import GestureSocketServer
 
@@ -43,9 +44,17 @@ class GestureEngine:
         dual_poses = {}
         motion_templates = {}
         dual_motions = {}
+        sequences = {}
         for name, gcfg in (self.config.get("gestures") or {}).items():
             gtype = gcfg.get("type")
-            if gtype == "motion_custom":
+            if gtype == "sequence":
+                seq = gcfg.get("sequence")
+                window_ms = gcfg.get("window_ms")
+                if isinstance(seq, list) and len(seq) >= 2 and isinstance(window_ms, int):
+                    sequences[name] = {"sequence": seq, "window_ms": window_ms}
+                else:
+                    print(f"Warning: sequence '{name}' needs 'sequence: [..]' (≥2) and integer 'window_ms'")
+            elif gtype == "motion_custom":
                 tpl = gcfg.get("motion_template")
                 if isinstance(tpl, list) and len(tpl) >= 5:
                     try:
@@ -91,6 +100,7 @@ class GestureEngine:
             dual_motions=dual_motions,
             buffer_size=rec_cfg["motion_buffer_frames"],
         )
+        self.sequence_classifier = SequenceClassifier(sequences=sequences)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
         )
@@ -108,6 +118,17 @@ class GestureEngine:
         self._preview_every_n = 3  # send 1 of every 3 frames (~10 fps)
         self._preview_size = (320, 240)
         self._preview_quality = 60  # JPEG quality 0..100
+
+    def _fire(self, name: str, confidence: float):
+        """Cooldown-gated emit + sequence-aware. Sends the leaf gesture, then
+        checks if it completes any sequence macro and fires that too."""
+        if not self.cooldown.should_fire(name, confidence):
+            return
+        self.socket_server.send_gesture(name, confidence)
+        self.sequence_classifier.record(name)
+        matched = self.sequence_classifier.detect()
+        if matched and self.cooldown.should_fire(matched, 0.95):
+            self.socket_server.send_gesture(matched, 0.95)
 
     def _handle_command(self, msg: dict):
         if msg.get("type") != "command":
@@ -178,16 +199,16 @@ class GestureEngine:
                 # Dual-hand check first — only when 2 hands visible.
                 if hands_detected == 2:
                     dual_match = self.dual_classifier.classify(hands_with_label)
-                    if dual_match and self.cooldown.should_fire(dual_match, 0.95):
-                        self.socket_server.send_gesture(dual_match, 0.95)
+                    if dual_match:
+                        self._fire(dual_match, 0.95)
                         self._static_buffer.clear()
                         continue
 
                     # Dual MOTION classifier — both hands moving together
                     self.dual_motion.update(hands_with_label)
                     dual_motion_match = self.dual_motion.detect()
-                    if dual_motion_match and self.cooldown.should_fire(dual_motion_match, 0.90):
-                        self.socket_server.send_gesture(dual_motion_match, 0.90)
+                    if dual_motion_match:
+                        self._fire(dual_motion_match, 0.90)
                         self._static_buffer.clear()
                         continue
 
@@ -198,8 +219,7 @@ class GestureEngine:
                     if len(self._static_buffer) >= self.static_confirm_frames:
                         recent = self._static_buffer[-self.static_confirm_frames:]
                         if all(g == static_gesture for g in recent):
-                            if self.cooldown.should_fire(static_gesture, 0.95):
-                                self.socket_server.send_gesture(static_gesture, 0.95)
+                            self._fire(static_gesture, 0.95)
                             self._static_buffer.clear()
                 else:
                     self._static_buffer.clear()
@@ -209,15 +229,13 @@ class GestureEngine:
                 self.motion_tracker.update(palm)
                 motion_gesture = self.motion_tracker.detect()
                 if motion_gesture:
-                    if self.cooldown.should_fire(motion_gesture, 0.90):
-                        self.socket_server.send_gesture(motion_gesture, 0.90)
+                    self._fire(motion_gesture, 0.90)
 
                 # Custom motion check (DTW against user templates)
                 self.custom_motion.update(palm)
                 custom_motion = self.custom_motion.detect()
                 if custom_motion:
-                    if self.cooldown.should_fire(custom_motion, 0.85):
-                        self.socket_server.send_gesture(custom_motion, 0.85)
+                    self._fire(custom_motion, 0.85)
 
         except KeyboardInterrupt:
             pass

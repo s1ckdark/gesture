@@ -273,6 +273,47 @@ class CustomMotionClassifier:
         return None
 
 
+class SequenceClassifier:
+    """Detects ordered gesture sequences within a time window.
+
+    `sequences` maps macro_name → {"sequence": [name, ...], "window_ms": int}.
+    Caller must invoke `record(name)` for every fired gesture; the classifier
+    keeps a rolling buffer trimmed to the longest configured window and
+    reports a match when the most recent N records equal a sequence and
+    span ≤ that sequence's window.
+    """
+
+    def __init__(self, sequences: Optional[dict] = None):
+        self.sequences = dict(sequences or {})
+        self.recent: list = []  # list of (gesture_name, timestamp_ms)
+        self._max_window = max(
+            (s.get("window_ms", 0) for s in self.sequences.values()),
+            default=0,
+        )
+
+    def record(self, gesture: str):
+        now = time.time() * 1000
+        self.recent.append((gesture, now))
+        if self._max_window > 0:
+            self.recent = [(g, t) for g, t in self.recent if now - t <= self._max_window]
+
+    def detect(self) -> Optional[str]:
+        if not self.sequences or not self.recent:
+            return None
+        for name, spec in self.sequences.items():
+            seq = spec.get("sequence") or []
+            window = spec.get("window_ms", 0)
+            n = len(seq)
+            if n == 0 or len(self.recent) < n:
+                continue
+            tail = self.recent[-n:]
+            tail_names = [g for g, _ in tail]
+            if tail_names == seq and (tail[-1][1] - tail[0][1]) <= window:
+                self.recent = []
+                return name
+        return None
+
+
 class CooldownManager:
     """Prevents duplicate gesture firing and filters low-confidence results."""
 

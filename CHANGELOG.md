@@ -6,6 +6,22 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-28
+
+### Added
+- Two-handed motion presets in the library (spread, pinch, page_left/right)
+- TTS voice feedback (Speak Gesture Name) — AVSpeechSynthesizer announces recognized gestures
+- Per-gesture emoji visual hints; surfaces in Settings rows + notification titles
+- Unified ActionEditorView covering all action types in every editor (Settings, Add, Motion record)
+- Click / Scroll / Type-text actions are now fully editable in the GUI (not just YAML)
+- Webhook action — POST to URL with optional JSON body via URLSession
+- Palm-position heatmap overlay in Camera Preview, with reset button
+- Named YAML profiles (`~/.gesture/profiles/<name>.yaml`) with switcher sheet
+- Gesture macros — `type: sequence` with ordered list + window_ms; engine emits the macro event when the leaf sequence completes in time
+
+### Changed
+- Engine `_fire(name, conf)` helper centralizes cooldown + sequence recording + macro detection (replaces 4 scattered cooldown/send call sites)
+
 ## [0.3.0] - 2026-04-28
 
 ### Added

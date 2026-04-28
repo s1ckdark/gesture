@@ -104,3 +104,14 @@ gestures:
     action:
       type: hotkey
       keys: ["cmd", "shift", "."]
+
+  # Gesture macros — fire when an ORDERED sequence of leaf gestures
+  # arrives within window_ms. Leaf gestures still fire normally on
+  # their own; the macro adds an extra event when the sequence completes.
+  combo_save:
+    type: sequence
+    sequence: ["thumbs_up", "peace"]
+    window_ms: 1500
+    action:
+      type: hotkey
+      keys: ["cmd", "s"]
