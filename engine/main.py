@@ -133,6 +133,11 @@ class GestureEngine:
                         w, h = self._preview_size
                         self.socket_server.send_frame(jpg.tobytes(), w, h)
 
+                    # Also stream the current finger states for the live HUD
+                    if landmarks is not None:
+                        states = self.static_classifier._get_finger_states(landmarks)
+                        self.socket_server.send_finger_states(states)
+
                 if landmarks is None:
                     self._static_buffer.clear()
                     continue

@@ -7,6 +7,7 @@ class SocketClient {
     var onGesture: ((GestureEvent) -> Void)?
     var onStatus: ((GestureEvent) -> Void)?
     var onFrame: ((Data, Int, Int) -> Void)?
+    var onFingerStates: (([Int]) -> Void)?
     var onDisconnect: (() -> Void)?
 
     init(socketPath: String = "/tmp/gesture.sock") {
@@ -74,6 +75,10 @@ class SocketClient {
                                        let imgData = Data(base64Encoded: b64),
                                        let w = event.width, let h = event.height {
                                         self.onFrame?(imgData, w, h)
+                                    }
+                                case "finger_states":
+                                    if let states = event.states {
+                                        self.onFingerStates?(states)
                                     }
                                 default: break
                                 }

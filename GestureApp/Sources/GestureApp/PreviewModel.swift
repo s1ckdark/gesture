@@ -7,6 +7,8 @@ import Combine
 final class PreviewModel: ObservableObject {
     @Published var image: NSImage?
     @Published var isActive: Bool = false
+    /// Live finger states [thumb, index, middle, ring, pinky] streamed from the engine.
+    @Published var fingerStates: [Int] = []
 
     /// Set by GestureApp once a SocketClient is connected.
     var sendCommand: ((String) -> Void)?
@@ -20,6 +22,7 @@ final class PreviewModel: ObservableObject {
         isActive = false
         sendCommand?("preview_off")
         image = nil
+        fingerStates = []
     }
 
     func ingest(jpegData: Data) {
@@ -27,5 +30,10 @@ final class PreviewModel: ObservableObject {
         if let img = NSImage(data: jpegData) {
             self.image = img
         }
+    }
+
+    func ingest(fingerStates: [Int]) {
+        guard isActive, fingerStates.count == 5 else { return }
+        self.fingerStates = fingerStates
     }
 }

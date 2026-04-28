@@ -11,11 +11,13 @@ struct GestureEvent: Codable {
     let data: String?
     let width: Int?
     let height: Int?
+    /// Live finger states [thumb, index, middle, ring, pinky] when type == "finger_states".
+    let states: [Int]?
 
     enum CodingKeys: String, CodingKey {
         case type, name, confidence, timestamp
         case handsDetected = "hands_detected"
-        case fps, data, width, height
+        case fps, data, width, height, states
     }
 }
 

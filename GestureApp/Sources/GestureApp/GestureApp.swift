@@ -237,6 +237,9 @@ struct GestureApp: App {
         client.onFrame = { data, _, _ in
             preview.ingest(jpegData: data)
         }
+        client.onFingerStates = { states in
+            preview.ingest(fingerStates: states)
+        }
         client.onDisconnect = {
             statusBar.status = .stopped
             statusBar.isEngineRunning = false
