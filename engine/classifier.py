@@ -316,6 +316,48 @@ class SequenceClassifier:
         return None
 
 
+class ChordClassifier:
+    """Like SequenceClassifier but order-independent. Fires when ALL gestures
+    in a chord have been recorded within `window_ms` of each other.
+    """
+
+    def __init__(self, chords: Optional[dict] = None):
+        self.chords = dict(chords or {})
+        self.recent: list = []
+        self._max_window = max(
+            (c.get("window_ms", 0) for c in self.chords.values()),
+            default=0,
+        )
+
+    def record(self, gesture: str):
+        now = time.time() * 1000
+        self.recent.append((gesture, now))
+        if self._max_window > 0:
+            self.recent = [(g, t) for g, t in self.recent if now - t <= self._max_window]
+
+    def detect(self) -> Optional[str]:
+        if not self.chords or not self.recent:
+            return None
+        for name, spec in self.chords.items():
+            target = set(spec.get("gestures") or [])
+            window = spec.get("window_ms", 0)
+            if not target:
+                continue
+            # Most-recent timestamp per target gesture
+            latest_for: dict = {}
+            for g, t in self.recent:
+                if g in target and t > latest_for.get(g, -1):
+                    latest_for[g] = t
+            if set(latest_for.keys()) != target:
+                continue
+            spread = max(latest_for.values()) - min(latest_for.values())
+            if spread <= window:
+                # Clear records used by this chord so it doesn't re-fire on the next gesture
+                self.recent = [(g, t) for g, t in self.recent if g not in target]
+                return name
+        return None
+
+
 class CooldownManager:
     """Prevents duplicate gesture firing and filters low-confidence results."""
 

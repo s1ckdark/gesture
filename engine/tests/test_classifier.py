@@ -9,6 +9,7 @@ from engine.classifier import (
     DualMotionClassifier,
     CustomMotionClassifier,
     SequenceClassifier,
+    ChordClassifier,
     dtw_distance,
 )
 
@@ -360,4 +361,39 @@ class TestSequenceClassifier:
     def test_returns_none_with_no_sequences(self):
         clf = SequenceClassifier()
         clf.record("anything")
+        assert clf.detect() is None
+
+
+class TestChordClassifier:
+    def test_match_in_either_order(self):
+        clf = ChordClassifier({
+            "combo": {"gestures": ["a", "b"], "window_ms": 1000},
+        })
+        clf.record("b")
+        clf.record("a")  # reverse order, still matches
+        assert clf.detect() == "combo"
+
+    def test_no_match_missing_one(self):
+        clf = ChordClassifier({
+            "combo": {"gestures": ["a", "b", "c"], "window_ms": 1000},
+        })
+        clf.record("a"); clf.record("b")
+        assert clf.detect() is None
+
+    def test_no_match_outside_window(self):
+        clf = ChordClassifier({
+            "combo": {"gestures": ["a", "b"], "window_ms": 100},
+        })
+        clf.record("a")
+        time.sleep(0.15)
+        clf.record("b")
+        assert clf.detect() is None
+
+    def test_clears_after_match(self):
+        clf = ChordClassifier({
+            "combo": {"gestures": ["a", "b"], "window_ms": 1000},
+        })
+        clf.record("a"); clf.record("b")
+        assert clf.detect() == "combo"
+        clf.record("a")  # alone, can't match
         assert clf.detect() is None

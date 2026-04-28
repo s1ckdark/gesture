@@ -18,6 +18,7 @@ from engine.classifier import (
     DualMotionClassifier,
     CustomMotionClassifier,
     SequenceClassifier,
+    ChordClassifier,
 )
 from engine.socket_server import GestureSocketServer
 
@@ -46,6 +47,7 @@ class GestureEngine:
         motion_templates = {}
         dual_motions = {}
         sequences = {}
+        chords = {}
         for name, gcfg in (self.config.get("gestures") or {}).items():
             gtype = gcfg.get("type")
             if gtype == "sequence":
@@ -55,6 +57,13 @@ class GestureEngine:
                     sequences[name] = {"sequence": seq, "window_ms": window_ms}
                 else:
                     print(f"Warning: sequence '{name}' needs 'sequence: [..]' (≥2) and integer 'window_ms'")
+            elif gtype == "chord":
+                gestures_list = gcfg.get("sequence") or gcfg.get("gestures")
+                window_ms = gcfg.get("window_ms")
+                if isinstance(gestures_list, list) and len(gestures_list) >= 2 and isinstance(window_ms, int):
+                    chords[name] = {"gestures": gestures_list, "window_ms": window_ms}
+                else:
+                    print(f"Warning: chord '{name}' needs 'sequence: [..]' (≥2) and integer 'window_ms'")
             elif gtype == "motion_custom":
                 tpl = gcfg.get("motion_template")
                 if isinstance(tpl, list) and len(tpl) >= 5:
@@ -109,6 +118,7 @@ class GestureEngine:
             threshold=rec_cfg.get("motion_threshold", 0.15),
         )
         self.sequence_classifier = SequenceClassifier(sequences=sequences)
+        self.chord_classifier = ChordClassifier(chords=chords)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
             threshold=rec_cfg.get("motion_threshold", 0.15),
@@ -129,14 +139,17 @@ class GestureEngine:
         self._preview_quality = 60  # JPEG quality 0..100
 
     def _fire(self, name: str, confidence: float):
-        """Cooldown-gated emit + sequence-aware. Sends the leaf gesture, then
-        checks if it completes any sequence macro and fires that too."""
+        """Cooldown-gated emit + sequence- and chord-aware. Sends the leaf
+        gesture, then checks if it completes any sequence or chord macro
+        and fires those too."""
         if not self.cooldown.should_fire(name, confidence):
             return
         self.socket_server.send_gesture(name, confidence)
         self.sequence_classifier.record(name)
-        matched = self.sequence_classifier.detect()
-        if matched and self.cooldown.should_fire(matched, 0.95):
+        self.chord_classifier.record(name)
+        if (matched := self.sequence_classifier.detect()) and self.cooldown.should_fire(matched, 0.95):
+            self.socket_server.send_gesture(matched, 0.95)
+        if (matched := self.chord_classifier.detect()) and self.cooldown.should_fire(matched, 0.95):
             self.socket_server.send_gesture(matched, 0.95)
 
     def _handle_command(self, msg: dict):
