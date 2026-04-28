@@ -53,6 +53,21 @@ class ActionExecutor {
                 password: action.obsPassword,
                 requestType: action.obsRequest ?? ""
             )
+        case .chain:
+            executeChain(steps: action.steps ?? [])
+        }
+    }
+
+    private func executeChain(steps: [ActionConfig]) {
+        guard !steps.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            for step in steps {
+                if let delay = step.delayMs, delay > 0 {
+                    Thread.sleep(forTimeInterval: Double(delay) / 1000.0)
+                }
+                self.execute(action: step)
+            }
         }
     }
 

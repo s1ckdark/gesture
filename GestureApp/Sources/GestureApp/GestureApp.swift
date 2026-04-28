@@ -462,6 +462,8 @@ struct GestureApp: App {
             return "POST \(g.action.url ?? "")"
         case .obsCommand:
             return "OBS \(g.action.obsRequest ?? "")"
+        case .chain:
+            return "chain (\((g.action.steps ?? []).count) steps)"
         }
     }
 

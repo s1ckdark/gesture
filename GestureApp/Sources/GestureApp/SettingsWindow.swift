@@ -302,6 +302,7 @@ private struct GestureEditor: View {
         case .typeText: return "type \"\(a.text?.prefix(20) ?? "")\""
         case .webhook: return "POST"
         case .obsCommand: return "OBS \(a.obsRequest ?? "")"
+        case .chain: return "chain ×\((a.steps ?? []).count)"
         case .applescript: return "applescript"
         }
     }

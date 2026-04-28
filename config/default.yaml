@@ -132,3 +132,17 @@ gestures:
     action:
       type: hotkey
       keys: ["cmd", "s"]
+
+  # Chain example — single gesture fires multiple actions in sequence.
+  # Each step is a full action config, optional delay_ms pauses BEFORE that step.
+  arrange_window:
+    type: static
+    pattern: [0, 1, 1, 1, 1]   # four fingers up
+    action:
+      type: chain
+      steps:
+        - type: hotkey
+          keys: ["cmd", "opt", "left"]
+        - type: hotkey
+          keys: ["cmd", "opt", "right"]
+          delay_ms: 150

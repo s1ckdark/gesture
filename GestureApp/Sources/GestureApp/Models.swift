@@ -32,6 +32,7 @@ enum ActionType: String, Codable {
     case typeText = "type_text"
     case webhook
     case obsCommand = "obs_command"
+    case chain
 }
 
 struct ActionConfig: Codable, Equatable {
@@ -58,13 +59,18 @@ struct ActionConfig: Codable, Equatable {
     var obsPassword: String?
     /// For obs_command: requestType, e.g. "StartRecord", "ToggleVirtualCam", "PauseRecord".
     var obsRequest: String?
+    /// For chain: ordered list of sub-actions to fire.
+    var steps: [ActionConfig]?
+    /// Inside a chain step: delay (ms) BEFORE this step runs.
+    var delayMs: Int?
 
     enum CodingKeys: String, CodingKey {
-        case type, keys, command, script, button, dx, dy, text, url, body
+        case type, keys, command, script, button, dx, dy, text, url, body, steps
         case clickCount = "click_count"
         case obsHost = "obs_host"
         case obsPassword = "obs_password"
         case obsRequest = "obs_request"
+        case delayMs = "delay_ms"
     }
 }
 

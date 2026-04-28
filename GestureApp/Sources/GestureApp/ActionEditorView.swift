@@ -23,6 +23,7 @@ struct ActionEditorView: View {
                 Text("Type").tag(ActionType.typeText)
                 Text("Webhook").tag(ActionType.webhook)
                 Text("OBS").tag(ActionType.obsCommand)
+                Text("Chain").tag(ActionType.chain)
             }
             .pickerStyle(.segmented)
 
@@ -34,6 +35,7 @@ struct ActionEditorView: View {
             case .typeText:   typeTextEditor
             case .webhook:    webhookEditor
             case .obsCommand: obsEditor
+            case .chain:      chainEditor
             case .applescript:
                 Text("AppleScript actions are post-MVP.")
                     .font(.caption).foregroundColor(.secondary)
@@ -133,6 +135,40 @@ struct ActionEditorView: View {
         }
     }
 
+    private var chainEditor: some View {
+        let steps = config.steps ?? []
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("\(steps.count) step\(steps.count == 1 ? "" : "s")")
+                .font(.caption).foregroundColor(.secondary)
+            ForEach(steps.indices, id: \.self) { i in
+                HStack {
+                    if let delay = steps[i].delayMs, delay > 0 {
+                        Text("⏱ \(delay)ms").font(.caption2).foregroundColor(.secondary)
+                    }
+                    Text(briefStep(steps[i]))
+                        .font(.system(.caption, design: .monospaced))
+                    Spacer()
+                }
+            }
+            Text("Edit chain steps in YAML directly — `steps:` is a list of action configs, each may include `delay_ms` for a pre-step pause.")
+                .font(.caption2).foregroundColor(.secondary)
+        }
+    }
+
+    private func briefStep(_ a: ActionConfig) -> String {
+        switch a.type {
+        case .hotkey: return "⌨ " + (a.keys ?? []).joined(separator: "+")
+        case .shell: return "$ \(a.command?.prefix(40) ?? "")"
+        case .click: return "🖱 click \(a.button ?? "left")"
+        case .scroll: return "🖱 scroll dy=\(Int(a.dy ?? 0))"
+        case .typeText: return "📝 \(a.text?.prefix(20) ?? "")"
+        case .webhook: return "🌐 POST"
+        case .obsCommand: return "🎬 \(a.obsRequest ?? "")"
+        case .chain: return "↻ chain"
+        case .applescript: return "applescript"
+        }
+    }
+
     private var obsEditor: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -197,6 +233,7 @@ struct ActionEditorView: View {
         config.dx = nil; config.dy = nil
         config.url = nil; config.body = nil
         config.obsHost = nil; config.obsPassword = nil; config.obsRequest = nil
+        config.steps = nil
 
         switch newType {
         case .hotkey: config.keys = []
@@ -206,6 +243,7 @@ struct ActionEditorView: View {
         case .typeText: config.text = ""
         case .webhook: config.url = ""
         case .obsCommand: config.obsHost = "localhost:4455"; config.obsRequest = ""
+        case .chain: config.steps = []
         case .applescript: break
         }
     }
@@ -222,6 +260,7 @@ struct ActionEditorView: View {
             return u.scheme == "http" || u.scheme == "https"
         case .obsCommand:
             return !(config.obsHost?.isEmpty ?? true) && !(config.obsRequest?.isEmpty ?? true)
+        case .chain: return !((config.steps ?? []).isEmpty)
         case .applescript: return false
         }
     }
