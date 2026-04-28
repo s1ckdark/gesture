@@ -1,13 +1,24 @@
 import SwiftUI
 
-/// Modal sheet for creating a new custom static pose.
+private enum GestureKind: String, CaseIterable, Identifiable {
+    case single = "Static (one hand)"
+    case dual = "Static Dual (two hands)"
+    var id: String { rawValue }
+}
+
+/// Modal sheet for creating a new custom static or dual-hand pose.
 struct AddGestureSheet: View {
     let existingNames: Set<String>
     let onAdd: (String, GestureConfig) -> Void
     let onCancel: () -> Void
 
     @State private var name: String = ""
-    @State private var fingers: [Bool] = [false, false, false, false, false]
+    @State private var kind: GestureKind = .single
+    @State private var fingers: [Bool] = Array(repeating: false, count: 5)
+    @State private var leftFingers: [Bool] = Array(repeating: false, count: 5)
+    @State private var rightFingers: [Bool] = Array(repeating: false, count: 5)
+    @State private var useProximity: Bool = false
+    @State private var proximity: Double = 0.2
     @State private var actionType: ActionType = .hotkey
     @State private var hotkeyKeys: [String] = []
     @State private var shellCommand: String = ""
@@ -17,7 +28,7 @@ struct AddGestureSheet: View {
     private static let fingerLabels = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
 
     private var nameError: String? {
-        if name.isEmpty { return nil }  // empty = neutral, button just disabled
+        if name.isEmpty { return nil }
         if !name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) {
             return "Use letters, digits, or underscore only."
         }
@@ -28,8 +39,16 @@ struct AddGestureSheet: View {
     }
 
     private var canSubmit: Bool {
-        !name.isEmpty && nameError == nil && fingers.contains(true) &&
-            (actionType == .shell ? !shellCommand.isEmpty : !hotkeyKeys.isEmpty)
+        guard !name.isEmpty, nameError == nil else { return false }
+        let patternsOK: Bool
+        switch kind {
+        case .single:
+            patternsOK = fingers.contains(true)
+        case .dual:
+            patternsOK = leftFingers.contains(true) && rightFingers.contains(true)
+        }
+        let actionOK = actionType == .shell ? !shellCommand.isEmpty : !hotkeyKeys.isEmpty
+        return patternsOK && actionOK
     }
 
     var body: some View {
@@ -37,6 +56,13 @@ struct AddGestureSheet: View {
             Text("New Custom Pose")
                 .font(.title2)
                 .bold()
+
+            Picker("Type", selection: $kind) {
+                ForEach(GestureKind.allCases) { k in
+                    Text(k.rawValue).tag(k)
+                }
+            }
+            .pickerStyle(.segmented)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Name")
@@ -48,67 +74,16 @@ struct AddGestureSheet: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Finger Pattern")
-                    .font(.subheadline)
-                Text("Tick each finger that should be extended.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                HStack(spacing: 6) {
-                    ForEach(0..<5, id: \.self) { i in
-                        Toggle(isOn: $fingers[i]) {
-                            Text(Self.fingerLabels[i])
-                                .font(.caption)
-                        }
-                        .toggleStyle(.button)
-                    }
-                }
-                Text("Pattern: \(patternString())")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.secondary)
+            switch kind {
+            case .single:
+                fingerRow(label: "Finger Pattern", binding: $fingers)
+            case .dual:
+                fingerRow(label: "Left Hand", binding: $leftFingers)
+                fingerRow(label: "Right Hand", binding: $rightFingers)
+                proximityRow
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Action")
-                    .font(.subheadline)
-                Picker("", selection: $actionType) {
-                    Text("Hotkey").tag(ActionType.hotkey)
-                    Text("Shell").tag(ActionType.shell)
-                }
-                .pickerStyle(.segmented)
-
-                switch actionType {
-                case .hotkey:
-                    HStack {
-                        Text(displayKeys())
-                            .font(.system(.body, design: .monospaced))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .frame(minWidth: 200, alignment: .leading)
-                            .background(Color.gray.opacity(0.15))
-                            .cornerRadius(4)
-                        if recorder.isRecording {
-                            Button("Cancel (Esc)") { recorder.stop() }
-                                .controlSize(.small)
-                        } else {
-                            Button("Record") { recorder.start() }
-                                .controlSize(.small)
-                        }
-                        Spacer()
-                    }
-                    .onChange(of: recorder.recordedKeys) { newKeys in
-                        if !newKeys.isEmpty { hotkeyKeys = newKeys }
-                    }
-                case .shell:
-                    TextEditor(text: $shellCommand)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minHeight: 50, maxHeight: 80)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(4)
-                case .applescript:
-                    EmptyView()
-                }
-            }
+            actionEditor
 
             Divider()
 
@@ -116,20 +91,98 @@ struct AddGestureSheet: View {
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Add") {
-                    submit()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(!canSubmit)
-                .buttonStyle(.borderedProminent)
+                Button("Add") { submit() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canSubmit)
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(16)
-        .frame(minWidth: 480)
+        .frame(minWidth: 520)
     }
 
-    private func patternString() -> String {
-        let bits = fingers.map { $0 ? "1" : "0" }
+    @ViewBuilder
+    private func fingerRow(label: String, binding: Binding<[Bool]>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.subheadline)
+            HStack(spacing: 6) {
+                ForEach(0..<5, id: \.self) { i in
+                    Toggle(isOn: binding[i]) {
+                        Text(Self.fingerLabels[i]).font(.caption)
+                    }
+                    .toggleStyle(.button)
+                }
+            }
+            Text("Pattern: \(patternString(binding.wrappedValue))")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var proximityRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Require palms close together (proximity)", isOn: $useProximity)
+                .toggleStyle(.checkbox)
+            if useProximity {
+                HStack {
+                    Text("Max distance:")
+                        .font(.caption)
+                    Slider(value: $proximity, in: 0.05...0.5, step: 0.01)
+                    Text(String(format: "%.2f", proximity))
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(width: 40, alignment: .trailing)
+                }
+            }
+        }
+    }
+
+    private var actionEditor: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Action")
+                .font(.subheadline)
+            Picker("", selection: $actionType) {
+                Text("Hotkey").tag(ActionType.hotkey)
+                Text("Shell").tag(ActionType.shell)
+            }
+            .pickerStyle(.segmented)
+
+            switch actionType {
+            case .hotkey:
+                HStack {
+                    Text(displayKeys())
+                        .font(.system(.body, design: .monospaced))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .frame(minWidth: 200, alignment: .leading)
+                        .background(Color.gray.opacity(0.15))
+                        .cornerRadius(4)
+                    if recorder.isRecording {
+                        Button("Cancel (Esc)") { recorder.stop() }
+                            .controlSize(.small)
+                    } else {
+                        Button("Record") { recorder.start() }
+                            .controlSize(.small)
+                    }
+                    Spacer()
+                }
+                .onChange(of: recorder.recordedKeys) { newKeys in
+                    if !newKeys.isEmpty { hotkeyKeys = newKeys }
+                }
+            case .shell:
+                TextEditor(text: $shellCommand)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 50, maxHeight: 80)
+                    .background(Color.gray.opacity(0.15))
+                    .cornerRadius(4)
+            case .applescript:
+                EmptyView()
+            }
+        }
+    }
+
+    private func patternString(_ states: [Bool]) -> String {
+        let bits = states.map { $0 ? "1" : "0" }
         return "[" + bits.joined(separator: ", ") + "]"
     }
 
@@ -150,7 +203,6 @@ struct AddGestureSheet: View {
     }
 
     private func submit() {
-        let pattern = fingers.map { $0 ? 1 : 0 }
         let action: ActionConfig
         switch actionType {
         case .hotkey:
@@ -160,7 +212,29 @@ struct AddGestureSheet: View {
         case .applescript:
             return
         }
-        let cfg = GestureConfig(type: "static", pattern: pattern, action: action)
+
+        let cfg: GestureConfig
+        switch kind {
+        case .single:
+            let pattern = fingers.map { $0 ? 1 : 0 }
+            cfg = GestureConfig(
+                type: "static",
+                pattern: pattern,
+                patternLeft: nil,
+                patternRight: nil,
+                proximity: nil,
+                action: action
+            )
+        case .dual:
+            cfg = GestureConfig(
+                type: "static_dual",
+                pattern: nil,
+                patternLeft: leftFingers.map { $0 ? 1 : 0 },
+                patternRight: rightFingers.map { $0 ? 1 : 0 },
+                proximity: useProximity ? proximity : nil,
+                action: action
+            )
+        }
         onAdd(name, cfg)
     }
 }
