@@ -36,6 +36,14 @@ struct ConfigManager {
         return "\(home)/.gesture/config.yaml"
     }
 
+    static func save(_ config: AppConfig, to path: String) throws {
+        let encoder = YAMLEncoder()
+        let yaml = try encoder.encode(config)
+        let dir = (path as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        try yaml.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
     static func ensureDefaultConfig(bundledConfigPath: String) throws {
         let targetPath = defaultConfigPath()
         let targetDir = (targetPath as NSString).deletingLastPathComponent

@@ -21,23 +21,23 @@ enum ActionType: String, Codable {
     case applescript
 }
 
-struct ActionConfig: Codable {
-    let type: ActionType
-    let keys: [String]?
-    let command: String?
-    let script: String?
+struct ActionConfig: Codable, Equatable {
+    var type: ActionType
+    var keys: [String]?
+    var command: String?
+    var script: String?
 }
 
-struct GestureConfig: Codable {
-    let type: String
-    let action: ActionConfig
+struct GestureConfig: Codable, Equatable {
+    var type: String
+    var action: ActionConfig
 }
 
-struct RecognitionConfig: Codable {
-    let confidenceThreshold: Double
-    let cooldownMs: Int
-    let motionBufferFrames: Int
-    let staticConfirmFrames: Int
+struct RecognitionConfig: Codable, Equatable {
+    var confidenceThreshold: Double
+    var cooldownMs: Int
+    var motionBufferFrames: Int
+    var staticConfirmFrames: Int
 
     enum CodingKeys: String, CodingKey {
         case confidenceThreshold = "confidence_threshold"
@@ -47,14 +47,14 @@ struct RecognitionConfig: Codable {
     }
 }
 
-struct CameraConfig: Codable {
-    let device: Int
-    let fps: Int
-    let resolution: [Int]
+struct CameraConfig: Codable, Equatable {
+    var device: Int
+    var fps: Int
+    var resolution: [Int]
 }
 
-struct AppConfig: Codable {
-    let camera: CameraConfig
-    let recognition: RecognitionConfig
-    let gestures: [String: GestureConfig]
+struct AppConfig: Codable, Equatable {
+    var camera: CameraConfig
+    var recognition: RecognitionConfig
+    var gestures: [String: GestureConfig]
 }

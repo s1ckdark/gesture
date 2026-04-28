@@ -10,7 +10,18 @@ struct GestureApp: App {
     @State private var socketRetryCount = 0
     private let maxSocketRetries = 5
 
+    @Environment(\.openWindow) private var openWindow
+
     var body: some Scene {
+        Window("Gesture Settings", id: "settings") {
+            SettingsWindow(
+                liveConfig: $config,
+                configPath: ConfigManager.defaultConfigPath(),
+                onSave: { reloadConfig() }
+            )
+        }
+        .windowResizability(.contentSize)
+
         MenuBarExtra {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -54,6 +65,12 @@ struct GestureApp: App {
                     toggleEngine()
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
+
+                Button("Settings…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: "settings")
+                }
+                .keyboardShortcut(",", modifiers: .command)
 
                 Button("Reload Config") {
                     reloadConfig()
