@@ -413,6 +413,8 @@ struct GestureApp: App {
             return "type \"\(g.action.text ?? "")\""
         case .webhook:
             return "POST \(g.action.url ?? "")"
+        case .obsCommand:
+            return "OBS \(g.action.obsRequest ?? "")"
         }
     }
 

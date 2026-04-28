@@ -31,6 +31,7 @@ enum ActionType: String, Codable {
     case scroll
     case typeText = "type_text"
     case webhook
+    case obsCommand = "obs_command"
 }
 
 struct ActionConfig: Codable, Equatable {
@@ -51,10 +52,19 @@ struct ActionConfig: Codable, Equatable {
     var url: String?
     /// For webhook: optional JSON body (string; included as-is in the POST body).
     var body: String?
+    /// For obs_command: WebSocket host like "localhost:4455".
+    var obsHost: String?
+    /// For obs_command: OBS WebSocket password (omit if auth disabled).
+    var obsPassword: String?
+    /// For obs_command: requestType, e.g. "StartRecord", "ToggleVirtualCam", "PauseRecord".
+    var obsRequest: String?
 
     enum CodingKeys: String, CodingKey {
         case type, keys, command, script, button, dx, dy, text, url, body
         case clickCount = "click_count"
+        case obsHost = "obs_host"
+        case obsPassword = "obs_password"
+        case obsRequest = "obs_request"
     }
 }
 

@@ -47,6 +47,12 @@ class ActionExecutor {
             executeTypeText(text: action.text ?? "")
         case .webhook:
             executeWebhook(urlString: action.url ?? "", body: action.body)
+        case .obsCommand:
+            ObsClient.sendCommand(
+                host: action.obsHost ?? "localhost:4455",
+                password: action.obsPassword,
+                requestType: action.obsRequest ?? ""
+            )
         }
     }
 

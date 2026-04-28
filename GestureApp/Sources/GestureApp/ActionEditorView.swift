@@ -22,16 +22,18 @@ struct ActionEditorView: View {
                 Text("Scroll").tag(ActionType.scroll)
                 Text("Type").tag(ActionType.typeText)
                 Text("Webhook").tag(ActionType.webhook)
+                Text("OBS").tag(ActionType.obsCommand)
             }
             .pickerStyle(.segmented)
 
             switch config.type {
-            case .hotkey:    hotkeyEditor
-            case .shell:     shellEditor
-            case .click:     clickEditor
-            case .scroll:    scrollEditor
-            case .typeText:  typeTextEditor
-            case .webhook:   webhookEditor
+            case .hotkey:     hotkeyEditor
+            case .shell:      shellEditor
+            case .click:      clickEditor
+            case .scroll:     scrollEditor
+            case .typeText:   typeTextEditor
+            case .webhook:    webhookEditor
+            case .obsCommand: obsEditor
             case .applescript:
                 Text("AppleScript actions are post-MVP.")
                     .font(.caption).foregroundColor(.secondary)
@@ -131,6 +133,36 @@ struct ActionEditorView: View {
         }
     }
 
+    private var obsEditor: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Host:").font(.caption)
+                TextField("localhost:4455", text: Binding(
+                    get: { config.obsHost ?? "" },
+                    set: { config.obsHost = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 200)
+                Text("Password:").font(.caption)
+                SecureField("(empty if auth disabled)", text: Binding(
+                    get: { config.obsPassword ?? "" },
+                    set: { config.obsPassword = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+            }
+            HStack {
+                Text("Request:").font(.caption)
+                TextField("e.g. StartRecord, PauseRecord, ToggleVirtualCam", text: Binding(
+                    get: { config.obsRequest ?? "" },
+                    set: { config.obsRequest = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+            }
+            Text("Sends an OBS WebSocket v5 request. Configure OBS → Tools → WebSocket Server Settings to enable.")
+                .font(.caption2).foregroundColor(.secondary)
+        }
+    }
+
     private var typeTextEditor: some View {
         TextField("Text to type when fired", text: Binding(
             get: { config.text ?? "" },
@@ -164,6 +196,7 @@ struct ActionEditorView: View {
         config.button = nil; config.clickCount = nil
         config.dx = nil; config.dy = nil
         config.url = nil; config.body = nil
+        config.obsHost = nil; config.obsPassword = nil; config.obsRequest = nil
 
         switch newType {
         case .hotkey: config.keys = []
@@ -172,6 +205,7 @@ struct ActionEditorView: View {
         case .scroll: config.dx = 0; config.dy = -120
         case .typeText: config.text = ""
         case .webhook: config.url = ""
+        case .obsCommand: config.obsHost = "localhost:4455"; config.obsRequest = ""
         case .applescript: break
         }
     }
@@ -186,6 +220,8 @@ struct ActionEditorView: View {
         case .webhook:
             guard let s = config.url, !s.isEmpty, let u = URL(string: s) else { return false }
             return u.scheme == "http" || u.scheme == "https"
+        case .obsCommand:
+            return !(config.obsHost?.isEmpty ?? true) && !(config.obsRequest?.isEmpty ?? true)
         case .applescript: return false
         }
     }
