@@ -1,0 +1,23 @@
+# Python
+engine/__pycache__/
+engine/*.pyc
+engine/venv/
+engine/.venv/
+engine/tests/__pycache__/
+**/__pycache__/
+
+# Swift
+GestureApp/.build/
+GestureApp/.swiftpm/
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Gesture app
+.superpowers/
+
+# Socket
+/tmp/gesture.sock

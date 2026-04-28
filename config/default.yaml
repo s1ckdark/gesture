@@ -1,0 +1,53 @@
+camera:
+  device: 0
+  fps: 30
+  resolution: [640, 480]
+
+recognition:
+  confidence_threshold: 0.85
+  cooldown_ms: 800
+  motion_buffer_frames: 20
+  static_confirm_frames: 3
+
+gestures:
+  thumbs_up:
+    type: static
+    action:
+      type: hotkey
+      keys: ["cmd", "c"]
+
+  peace:
+    type: static
+    action:
+      type: hotkey
+      keys: ["cmd", "v"]
+
+  fist:
+    type: static
+    action:
+      type: shell
+      command: "osascript -e 'tell application \"Spotify\" to playpause'"
+
+  open_palm:
+    type: static
+    action:
+      type: hotkey
+      keys: ["cmd", "tab"]
+
+  ok_sign:
+    type: static
+    action:
+      type: hotkey
+      keys: ["cmd", "space"]
+
+  swipe_left:
+    type: motion
+    action:
+      type: shell
+      command: "open -a 'Mission Control'"
+
+  swipe_right:
+    type: motion
+    action:
+      type: hotkey
+      keys: ["cmd", "shift", "4"]
