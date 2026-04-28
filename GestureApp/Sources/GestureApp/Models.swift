@@ -36,7 +36,17 @@ struct GestureConfig: Codable, Equatable {
     var type: String
     /// Optional 5-bit finger pattern [thumb, index, middle, ring, pinky] for custom static poses.
     var pattern: [Int]?
+    /// For type == "static_dual": pattern of the user's left hand.
+    var patternLeft: [Int]?
+    /// For type == "static_dual": pattern of the user's right hand.
+    var patternRight: [Int]?
     var action: ActionConfig
+
+    enum CodingKeys: String, CodingKey {
+        case type, pattern, action
+        case patternLeft = "pattern_left"
+        case patternRight = "pattern_right"
+    }
 }
 
 struct RecognitionConfig: Codable, Equatable {

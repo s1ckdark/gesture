@@ -95,6 +95,32 @@ class MotionTracker:
         return result
 
 
+class DualHandClassifier:
+    """Classifies two-handed static poses using per-hand 5-bit finger patterns.
+
+    `dual_poses` maps gesture name → {"left": [5 bits], "right": [5 bits]}.
+    Both hands must match (by handedness label) for a pose to fire.
+    """
+
+    def __init__(self, dual_poses: Optional[dict] = None):
+        self.poses = dict(dual_poses or {})
+        self._single = StaticClassifier()  # reuse finger-state logic
+
+    def classify(self, hands) -> Optional[str]:
+        """`hands` is a list of (landmarks, handedness_label) tuples."""
+        if len(hands) != 2 or not self.poses:
+            return None
+        observed = {}
+        for landmarks, label in hands:
+            observed[label] = self._single._get_finger_states(landmarks)
+        if "Left" not in observed or "Right" not in observed:
+            return None
+        for name, patterns in self.poses.items():
+            if observed["Left"] == patterns.get("left") and observed["Right"] == patterns.get("right"):
+                return name
+        return None
+
+
 class CooldownManager:
     """Prevents duplicate gesture firing and filters low-confidence results."""
 

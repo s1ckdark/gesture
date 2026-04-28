@@ -67,3 +67,21 @@ gestures:
     action:
       type: hotkey
       keys: ["cmd", "shift", "v"]  # Zoom toggle camera
+
+  # Two-handed poses — both `pattern_left` and `pattern_right` must match.
+  # type=static_dual is checked BEFORE single-hand poses when 2 hands visible.
+  high_five:  # 🖐️🖐️
+    type: static_dual
+    pattern_left:  [1, 1, 1, 1, 1]
+    pattern_right: [1, 1, 1, 1, 1]
+    action:
+      type: shell
+      command: "afplay /System/Library/Sounds/Glass.aiff"
+
+  double_peace:  # ✌️✌️
+    type: static_dual
+    pattern_left:  [0, 1, 1, 0, 0]
+    pattern_right: [0, 1, 1, 0, 0]
+    action:
+      type: hotkey
+      keys: ["cmd", "shift", "."]

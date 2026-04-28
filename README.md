@@ -77,6 +77,25 @@ gestures:
 
 Reload via menu → "Reload Config". Pattern conflicts with the built-ins (thumbs_up, peace, fist, open_palm) override the defaults if you give them the same name.
 
+You can also add new poses from inside the app: open Settings → click the **+** button → name + finger toggles + action.
+
+## Two-handed poses
+
+Use `type: static_dual` and supply patterns for both the user's left and right hands. Both must match for the pose to fire — dual matches are checked before single-hand poses when two hands are visible.
+
+```yaml
+gestures:
+  high_five:
+    type: static_dual
+    pattern_left:  [1, 1, 1, 1, 1]   # open palm
+    pattern_right: [1, 1, 1, 1, 1]
+    action:
+      type: shell
+      command: "afplay /System/Library/Sounds/Glass.aiff"
+```
+
+Note: handedness is from your perspective (subject), not the camera's. MediaPipe labels them automatically.
+
 ## Development
 
 ```bash

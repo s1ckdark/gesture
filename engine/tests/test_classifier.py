@@ -1,7 +1,7 @@
 import time
 
 import pytest
-from engine.classifier import StaticClassifier, MotionTracker, CooldownManager
+from engine.classifier import StaticClassifier, MotionTracker, CooldownManager, DualHandClassifier
 
 # MediaPipe landmark indices:
 # 0=WRIST, 4=THUMB_TIP, 3=THUMB_IP, 8=INDEX_TIP, 6=INDEX_PIP,
@@ -136,3 +136,40 @@ class TestCooldownManager:
         self.cooldown.should_fire("thumbs_up", 0.9)
         time.sleep(0.15)  # wait longer than 100ms cooldown
         assert self.cooldown.should_fire("thumbs_up", 0.9) is True
+
+
+class TestDualHandClassifier:
+    def test_match_both_hands(self):
+        clf = DualHandClassifier({
+            "high_five": {"left": [1, 1, 1, 1, 1], "right": [1, 1, 1, 1, 1]},
+        })
+        hands = [
+            (_make_landmarks([1, 1, 1, 1, 1]), "Left"),
+            (_make_landmarks([1, 1, 1, 1, 1]), "Right"),
+        ]
+        assert clf.classify(hands) == "high_five"
+
+    def test_no_match_when_one_hand_wrong(self):
+        clf = DualHandClassifier({
+            "double_peace": {"left": [0, 1, 1, 0, 0], "right": [0, 1, 1, 0, 0]},
+        })
+        hands = [
+            (_make_landmarks([0, 1, 1, 0, 0]), "Left"),
+            (_make_landmarks([1, 1, 1, 1, 1]), "Right"),  # right is open palm, not peace
+        ]
+        assert clf.classify(hands) is None
+
+    def test_returns_none_with_one_hand(self):
+        clf = DualHandClassifier({
+            "high_five": {"left": [1, 1, 1, 1, 1], "right": [1, 1, 1, 1, 1]},
+        })
+        hands = [(_make_landmarks([1, 1, 1, 1, 1]), "Left")]
+        assert clf.classify(hands) is None
+
+    def test_returns_none_with_no_poses(self):
+        clf = DualHandClassifier()
+        hands = [
+            (_make_landmarks([1, 1, 1, 1, 1]), "Left"),
+            (_make_landmarks([1, 1, 1, 1, 1]), "Right"),
+        ]
+        assert clf.classify(hands) is None

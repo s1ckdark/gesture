@@ -29,7 +29,7 @@ class HandDetector:
 
     def __init__(
         self,
-        max_hands: int = 1,
+        max_hands: int = 2,
         min_detection_confidence: float = 0.7,
         min_tracking_confidence: float = 0.5,
     ):
@@ -48,14 +48,28 @@ class HandDetector:
     def detect(
         self, frame: np.ndarray
     ) -> Optional[list[tuple[float, float, float]]]:
-        """Returns list of 21 (x, y, z) landmarks for the first detected hand, or None."""
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        self._timestamp_ms += 33  # ~30 fps spacing; needs monotonically increasing
-        result = self._detector.detect_for_video(mp_image, self._timestamp_ms)
-        if not result.hand_landmarks:
+        """Single-hand convenience: returns 21 landmarks for the first hand, or None."""
+        hands = self.detect_all(frame)
+        if not hands:
             return None
-        hand = result.hand_landmarks[0]
-        return [(lm.x, lm.y, lm.z) for lm in hand]
+        return hands[0][0]
+
+    def detect_all(
+        self, frame: np.ndarray
+    ) -> list[tuple[list[tuple[float, float, float]], str]]:
+        """Returns a list of (landmarks, handedness_label) per detected hand.
+        handedness_label is 'Left' or 'Right' from the subject's perspective."""
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        self._timestamp_ms += 33
+        result = self._detector.detect_for_video(mp_image, self._timestamp_ms)
+        out = []
+        for i, hand in enumerate(result.hand_landmarks):
+            label = "Unknown"
+            if i < len(result.handedness) and result.handedness[i]:
+                label = result.handedness[i][0].category_name
+            landmarks = [(lm.x, lm.y, lm.z) for lm in hand]
+            out.append((landmarks, label))
+        return out
 
     def get_palm_center(
         self, landmarks: list[tuple[float, float, float]]

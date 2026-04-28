@@ -10,7 +10,7 @@ import yaml
 
 from engine.camera import Camera
 from engine.detector import HandDetector
-from engine.classifier import StaticClassifier, MotionTracker, CooldownManager
+from engine.classifier import StaticClassifier, MotionTracker, CooldownManager, DualHandClassifier
 from engine.socket_server import GestureSocketServer
 
 
@@ -33,15 +33,26 @@ class GestureEngine:
 
         # Pull any custom static-pose patterns from YAML config.
         custom_poses = {}
+        dual_poses = {}
         for name, gcfg in (self.config.get("gestures") or {}).items():
-            if gcfg.get("type") == "static" and gcfg.get("pattern"):
+            gtype = gcfg.get("type")
+            if gtype == "static" and gcfg.get("pattern"):
                 pattern = gcfg["pattern"]
                 if isinstance(pattern, list) and len(pattern) == 5 and all(p in (0, 1) for p in pattern):
                     custom_poses[name] = pattern
                 else:
                     print(f"Warning: invalid pattern for gesture '{name}': {pattern}")
+            elif gtype == "static_dual":
+                left = gcfg.get("pattern_left")
+                right = gcfg.get("pattern_right")
+                if (isinstance(left, list) and len(left) == 5 and all(p in (0, 1) for p in left)
+                    and isinstance(right, list) and len(right) == 5 and all(p in (0, 1) for p in right)):
+                    dual_poses[name] = {"left": left, "right": right}
+                else:
+                    print(f"Warning: invalid dual pattern for gesture '{name}'")
 
         self.static_classifier = StaticClassifier(custom_poses=custom_poses)
+        self.dual_classifier = DualHandClassifier(dual_poses=dual_poses)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
         )
@@ -90,8 +101,10 @@ class GestureEngine:
                 if frame is None:
                     continue
 
-                landmarks = self.detector.detect(frame)
-                hands_detected = 1 if landmarks else 0
+                hands_with_label = self.detector.detect_all(frame)
+                hands_detected = len(hands_with_label)
+                # Single-hand fallback uses the first detected hand
+                landmarks = hands_with_label[0][0] if hands_with_label else None
 
                 # Calculate FPS
                 frame_count += 1
@@ -117,6 +130,14 @@ class GestureEngine:
                 if landmarks is None:
                     self._static_buffer.clear()
                     continue
+
+                # Dual-hand check first — only when 2 hands visible.
+                if hands_detected == 2:
+                    dual_match = self.dual_classifier.classify(hands_with_label)
+                    if dual_match and self.cooldown.should_fire(dual_match, 0.95):
+                        self.socket_server.send_gesture(dual_match, 0.95)
+                        self._static_buffer.clear()
+                        continue
 
                 # Static gesture check (require N-frame stability)
                 static_gesture = self.static_classifier.classify(landmarks)
