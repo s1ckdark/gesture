@@ -22,6 +22,8 @@ struct GestureApp: App {
     @State private var socketRetryCount = 0
     private let maxSocketRetries = 5
 
+    @AppStorage("soundFeedback") private var soundFeedback = false
+
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
@@ -90,6 +92,9 @@ struct GestureApp: App {
                     set: { loginItem.setEnabled($0) }
                 ))
                 .toggleStyle(.checkbox)
+
+                Toggle("Sound on Gesture", isOn: $soundFeedback)
+                    .toggleStyle(.checkbox)
 
                 Divider()
 
@@ -172,6 +177,10 @@ struct GestureApp: App {
         client.onGesture = { event in
             guard let name = event.name else { return }
             statusBar.gestureRecognized(name)
+
+            if soundFeedback {
+                NSSound(named: "Tink")?.play()
+            }
 
             if let gestureConfig = config.gestures[name] {
                 actionExecutor.execute(action: gestureConfig.action)
