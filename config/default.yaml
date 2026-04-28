@@ -13,6 +13,9 @@ recognition:
   ok_sign_distance: 0.08          # max thumb-tip ↔ index-tip distance for OK sign
   motion_threshold: 0.15          # min total displacement for a swipe
   motion_template_threshold: 0.12 # max DTW distance for a custom-motion match
+  # Performance:
+  # detect_every_n_frames: 2     # detect every Nth captured frame; preview keeps full rate
+  # use_gpu: true                # try MediaPipe Metal/GPU delegate (falls back to CPU on failure)
 
 gestures:
   thumbs_up:

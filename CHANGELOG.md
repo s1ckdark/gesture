@@ -6,6 +6,22 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-29
+
+### Added
+- App-aware action overrides — per-bundle-ID overrides on each gesture; same gesture, different action depending on the frontmost app
+- Stats dashboard window using SwiftUI Charts (lifetime BarMark + recent activity PointMark)
+- Recognition tuning knobs in YAML — `ok_sign_distance`, `motion_threshold`, `motion_template_threshold`
+- Full Korean i18n coverage — all sheets/windows now have ~85 localized strings
+- Profile cloud share — clipboard export per profile + URL/paste import sheet
+- OBS WebSocket v5 action type — fires StartRecord/PauseRecord/ToggleVirtualCam etc. via stateless WS client (CryptoKit-backed auth)
+- Hotkey usage tracker + recommendations sheet — global event monitor counts modifier+key combos, surfaces top unbound for one-click gesture binding
+- Performance: `detect_every_n_frames` to skip detection for CPU savings; preview JPEGs continue at full capture rate
+- Performance: `use_gpu` toggle wires the MediaPipe Metal delegate (with graceful CPU fallback)
+
+### Changed
+- Engine main loop restructured so preview JPEG streaming runs independently of detection skipping
+
 ## [0.4.1] - 2026-04-28
 
 ### Fixed

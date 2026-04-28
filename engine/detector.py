@@ -32,10 +32,25 @@ class HandDetector:
         max_hands: int = 2,
         min_detection_confidence: float = 0.7,
         min_tracking_confidence: float = 0.5,
+        use_gpu: bool = False,
     ):
         model_path = _ensure_model()
+        # Try GPU when requested; fall back to CPU on failure since not every
+        # Mac/MediaPipe build supports the Metal delegate cleanly.
+        base_options = None
+        if use_gpu:
+            try:
+                base_options = BaseOptions(
+                    model_asset_path=model_path,
+                    delegate=BaseOptions.Delegate.GPU,
+                )
+            except Exception as e:
+                print(f"GPU delegate unavailable, falling back to CPU: {e}")
+        if base_options is None:
+            base_options = BaseOptions(model_asset_path=model_path)
+
         options = vision.HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=model_path),
+            base_options=base_options,
             num_hands=max_hands,
             min_hand_detection_confidence=min_detection_confidence,
             min_hand_presence_confidence=min_detection_confidence,

@@ -37,7 +37,8 @@ class GestureEngine:
             width=cam_cfg["resolution"][0],
             height=cam_cfg["resolution"][1],
         )
-        self.detector = HandDetector()
+        self.detector = HandDetector(use_gpu=rec_cfg.get("use_gpu", False))
+        self.detect_every_n = max(1, int(rec_cfg.get("detect_every_n_frames", 1)))
 
         # Pull any custom static-pose patterns from YAML config.
         custom_poses = {}
@@ -168,21 +169,8 @@ class GestureEngine:
                 if frame is None:
                     continue
 
-                hands_with_label = self.detector.detect_all(frame)
-                hands_detected = len(hands_with_label)
-                # Single-hand fallback uses the first detected hand
-                landmarks = hands_with_label[0][0] if hands_with_label else None
-
-                # Calculate FPS
                 frame_count += 1
-                elapsed = time.time() - fps_start
-                if elapsed >= 1.0:
-                    fps = frame_count / elapsed
-                    self.socket_server.send_status(hands_detected, fps)
-                    frame_count = 0
-                    fps_start = time.time()
-
-                # Preview stream — only when enabled (zero overhead otherwise)
+                # Frame-rate independent preview JPEG (independent of detection skipping)
                 if self._preview_enabled and frame_count % self._preview_every_n == 0:
                     small = cv2.resize(frame, self._preview_size)
                     bgr = cv2.cvtColor(small, cv2.COLOR_RGB2BGR)
@@ -194,11 +182,27 @@ class GestureEngine:
                         w, h = self._preview_size
                         self.socket_server.send_frame(jpg.tobytes(), w, h)
 
-                    # Also stream the current finger states + palm center for the live HUD / motion recorder
-                    if landmarks is not None:
-                        states = self.static_classifier._get_finger_states(landmarks)
-                        palm_xy = self.detector.get_palm_center(landmarks)
-                        self.socket_server.send_finger_states(states, palm=palm_xy)
+                # Detection frame skip — saves CPU when set higher than 1
+                if frame_count % self.detect_every_n != 0:
+                    continue
+
+                hands_with_label = self.detector.detect_all(frame)
+                hands_detected = len(hands_with_label)
+                landmarks = hands_with_label[0][0] if hands_with_label else None
+
+                # FPS measured against frames CAPTURED (not just detected)
+                elapsed = time.time() - fps_start
+                if elapsed >= 1.0:
+                    fps = frame_count / elapsed
+                    self.socket_server.send_status(hands_detected, fps)
+                    frame_count = 0
+                    fps_start = time.time()
+
+                # Live finger-state HUD updates whenever we just ran detection
+                if self._preview_enabled and landmarks is not None:
+                    states = self.static_classifier._get_finger_states(landmarks)
+                    palm_xy = self.detector.get_palm_center(landmarks)
+                    self.socket_server.send_finger_states(states, palm=palm_xy)
 
                 if landmarks is None:
                     self._static_buffer.clear()
