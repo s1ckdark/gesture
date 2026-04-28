@@ -1,5 +1,5 @@
 import pytest
-from engine.classifier import StaticClassifier
+from engine.classifier import StaticClassifier, MotionTracker
 
 # MediaPipe landmark indices:
 # 0=WRIST, 4=THUMB_TIP, 3=THUMB_IP, 8=INDEX_TIP, 6=INDEX_PIP,
@@ -67,3 +67,35 @@ class TestStaticClassifier:
         landmarks[8] = (0.52, 0.42, 0.0)  # index tip — very close to thumb
         result = self.classifier.classify(landmarks)
         assert result == "ok_sign"
+
+
+class TestMotionTracker:
+    def setup_method(self):
+        self.tracker = MotionTracker(buffer_size=10, threshold=0.15)
+
+    def test_no_motion_initially(self):
+        self.tracker.update((0.5, 0.5))
+        assert self.tracker.detect() is None
+
+    def test_swipe_left(self):
+        # Simulate hand moving left: x decreasing
+        for i in range(10):
+            self.tracker.update((0.8 - i * 0.05, 0.5))
+        assert self.tracker.detect() == "swipe_left"
+
+    def test_swipe_right(self):
+        for i in range(10):
+            self.tracker.update((0.2 + i * 0.05, 0.5))
+        assert self.tracker.detect() == "swipe_right"
+
+    def test_no_motion_when_stationary(self):
+        for _ in range(10):
+            self.tracker.update((0.5, 0.5))
+        assert self.tracker.detect() is None
+
+    def test_buffer_clears_after_detection(self):
+        for i in range(10):
+            self.tracker.update((0.8 - i * 0.05, 0.5))
+        assert self.tracker.detect() == "swipe_left"
+        # After detection, buffer should reset
+        assert self.tracker.detect() is None

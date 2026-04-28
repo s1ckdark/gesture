@@ -1,4 +1,5 @@
 import math
+from collections import deque
 from typing import Optional
 
 THUMB_TIP, THUMB_IP = 4, 3
@@ -49,3 +50,35 @@ class StaticClassifier:
             if states == pose_states:
                 return pose_name
         return None
+
+
+class MotionTracker:
+    """Detects directional swipe gestures from palm center trajectory."""
+
+    def __init__(self, buffer_size: int = 20, threshold: float = 0.15):
+        self.buffer: deque[tuple[float, float]] = deque(maxlen=buffer_size)
+        self.threshold = threshold
+        self.buffer_size = buffer_size
+
+    def update(self, palm_center: tuple[float, float]):
+        self.buffer.append(palm_center)
+
+    def detect(self) -> Optional[str]:
+        if len(self.buffer) < self.buffer_size:
+            return None
+
+        start = self.buffer[0]
+        end = self.buffer[-1]
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+
+        result = None
+        if abs(dx) > self.threshold and abs(dx) > abs(dy):
+            result = "swipe_right" if dx > 0 else "swipe_left"
+        elif abs(dy) > self.threshold and abs(dy) > abs(dx):
+            result = "swipe_down" if dy > 0 else "swipe_up"
+
+        if result:
+            self.buffer.clear()
+
+        return result
