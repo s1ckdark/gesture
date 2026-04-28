@@ -35,6 +35,59 @@ enum ActionType: String, Codable {
     case chain
 }
 
+extension ActionType {
+    /// Single source of truth for the human-visible label of an action type.
+    /// Used by Picker tags, brief() summaries, and any other UI surface.
+    var displayLabel: String {
+        switch self {
+        case .hotkey:      return "Hotkey"
+        case .shell:       return "Shell"
+        case .applescript: return "AppleScript"
+        case .click:       return "Click"
+        case .scroll:      return "Scroll"
+        case .typeText:    return "Type"
+        case .webhook:     return "Webhook"
+        case .obsCommand:  return "OBS"
+        case .chain:       return "Chain"
+        }
+    }
+
+    /// Returns true when the ActionConfig has enough data for this type to fire.
+    func isValid(_ a: ActionConfig) -> Bool {
+        switch self {
+        case .hotkey:    return !(a.keys?.isEmpty ?? true)
+        case .shell:     return !(a.command?.isEmpty ?? true)
+        case .click:     return (a.button ?? "").count > 0
+        case .scroll:    return (a.dx ?? 0) != 0 || (a.dy ?? 0) != 0
+        case .typeText:  return !(a.text?.isEmpty ?? true)
+        case .webhook:
+            guard let s = a.url, !s.isEmpty, let u = URL(string: s) else { return false }
+            return u.scheme == "http" || u.scheme == "https"
+        case .obsCommand:
+            return !(a.obsHost?.isEmpty ?? true) && !(a.obsRequest?.isEmpty ?? true)
+        case .chain:     return !((a.steps ?? []).isEmpty)
+        case .applescript: return false
+        }
+    }
+
+    /// One-line summary suitable for menu, list rows, log lines, notifications.
+    func brief(_ a: ActionConfig) -> String {
+        switch self {
+        case .hotkey:      return (a.keys ?? []).joined(separator: " + ")
+        case .shell:
+            let cmd = a.command ?? ""
+            return cmd.count > 60 ? String(cmd.prefix(60)) + "…" : cmd
+        case .applescript: return "applescript"
+        case .click:       return "click \(a.button ?? "left") ×\(a.clickCount ?? 1)"
+        case .scroll:      return "scroll dx=\(Int(a.dx ?? 0)) dy=\(Int(a.dy ?? 0))"
+        case .typeText:    return "type \"\(a.text ?? "")\""
+        case .webhook:     return "POST \(a.url ?? "")"
+        case .obsCommand:  return "OBS \(a.obsRequest ?? "")"
+        case .chain:       return "chain ×\((a.steps ?? []).count)"
+        }
+    }
+}
+
 struct ActionConfig: Codable, Equatable {
     var type: ActionType
     var keys: [String]?

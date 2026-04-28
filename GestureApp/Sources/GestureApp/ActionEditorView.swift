@@ -156,17 +156,7 @@ struct ActionEditorView: View {
     }
 
     private func briefStep(_ a: ActionConfig) -> String {
-        switch a.type {
-        case .hotkey: return "⌨ " + (a.keys ?? []).joined(separator: "+")
-        case .shell: return "$ \(a.command?.prefix(40) ?? "")"
-        case .click: return "🖱 click \(a.button ?? "left")"
-        case .scroll: return "🖱 scroll dy=\(Int(a.dy ?? 0))"
-        case .typeText: return "📝 \(a.text?.prefix(20) ?? "")"
-        case .webhook: return "🌐 POST"
-        case .obsCommand: return "🎬 \(a.obsRequest ?? "")"
-        case .chain: return "↻ chain"
-        case .applescript: return "applescript"
-        }
+        a.type.brief(a)
     }
 
     private var obsEditor: some View {
@@ -249,19 +239,6 @@ struct ActionEditorView: View {
     }
 
     static func isValid(_ config: ActionConfig) -> Bool {
-        switch config.type {
-        case .hotkey: return !(config.keys?.isEmpty ?? true)
-        case .shell: return !(config.command?.isEmpty ?? true)
-        case .click: return (config.button ?? "").count > 0
-        case .scroll: return (config.dx ?? 0) != 0 || (config.dy ?? 0) != 0
-        case .typeText: return !(config.text?.isEmpty ?? true)
-        case .webhook:
-            guard let s = config.url, !s.isEmpty, let u = URL(string: s) else { return false }
-            return u.scheme == "http" || u.scheme == "https"
-        case .obsCommand:
-            return !(config.obsHost?.isEmpty ?? true) && !(config.obsRequest?.isEmpty ?? true)
-        case .chain: return !((config.steps ?? []).isEmpty)
-        case .applescript: return false
-        }
+        config.type.isValid(config)
     }
 }

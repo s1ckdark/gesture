@@ -309,17 +309,7 @@ private struct GestureEditor: View {
     }
 
     private func briefAction(_ a: ActionConfig) -> String {
-        switch a.type {
-        case .hotkey: return (a.keys ?? []).joined(separator: "+")
-        case .shell: return "shell"
-        case .click: return "click"
-        case .scroll: return "scroll"
-        case .typeText: return "type \"\(a.text?.prefix(20) ?? "")\""
-        case .webhook: return "POST"
-        case .obsCommand: return "OBS \(a.obsRequest ?? "")"
-        case .chain: return "chain ×\((a.steps ?? []).count)"
-        case .applescript: return "applescript"
-        }
+        a.type.brief(a)
     }
 
     private func displayName(_ raw: String) -> String {
