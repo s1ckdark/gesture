@@ -28,7 +28,18 @@ class GestureEngine:
             height=cam_cfg["resolution"][1],
         )
         self.detector = HandDetector()
-        self.static_classifier = StaticClassifier()
+
+        # Pull any custom static-pose patterns from YAML config.
+        custom_poses = {}
+        for name, gcfg in (self.config.get("gestures") or {}).items():
+            if gcfg.get("type") == "static" and gcfg.get("pattern"):
+                pattern = gcfg["pattern"]
+                if isinstance(pattern, list) and len(pattern) == 5 and all(p in (0, 1) for p in pattern):
+                    custom_poses[name] = pattern
+                else:
+                    print(f"Warning: invalid pattern for gesture '{name}': {pattern}")
+
+        self.static_classifier = StaticClassifier(custom_poses=custom_poses)
         self.motion_tracker = MotionTracker(
             buffer_size=rec_cfg["motion_buffer_frames"],
         )

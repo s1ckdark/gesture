@@ -30,6 +30,8 @@ struct ActionConfig: Codable, Equatable {
 
 struct GestureConfig: Codable, Equatable {
     var type: String
+    /// Optional 5-bit finger pattern [thumb, index, middle, ring, pinky] for custom static poses.
+    var pattern: [Int]?
     var action: ActionConfig
 }
 

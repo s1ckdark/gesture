@@ -19,7 +19,17 @@ STATIC_POSES = {
 
 
 class StaticClassifier:
-    """Classifies static hand poses based on finger extension states."""
+    """Classifies static hand poses based on finger extension states.
+
+    Built-in poses live in STATIC_POSES; user-defined poses can be supplied
+    via the `custom_poses` argument and will override built-ins of the same
+    name (or extend the set with new pose names).
+    """
+
+    def __init__(self, custom_poses: Optional[dict] = None):
+        self.poses = dict(STATIC_POSES)
+        if custom_poses:
+            self.poses.update(custom_poses)
 
     def _is_finger_extended(self, landmarks, tip_idx: int, pip_idx: int) -> bool:
         return landmarks[tip_idx][1] < landmarks[pip_idx][1]
@@ -47,7 +57,7 @@ class StaticClassifier:
                 return "ok_sign"
 
         states = self._get_finger_states(landmarks)
-        for pose_name, pose_states in STATIC_POSES.items():
+        for pose_name, pose_states in self.poses.items():
             if states == pose_states:
                 return pose_name
         return None

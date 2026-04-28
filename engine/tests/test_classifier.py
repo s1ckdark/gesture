@@ -70,6 +70,17 @@ class TestStaticClassifier:
         result = self.classifier.classify(landmarks)
         assert result == "ok_sign"
 
+    def test_custom_pose_rock(self):
+        """User-defined pose injected via custom_poses overrides + extends defaults."""
+        classifier = StaticClassifier(custom_poses={"rock": [0, 1, 0, 0, 1]})
+        landmarks = _make_landmarks([0, 1, 0, 0, 1])
+        assert classifier.classify(landmarks) == "rock"
+
+    def test_custom_pose_does_not_break_defaults(self):
+        classifier = StaticClassifier(custom_poses={"rock": [0, 1, 0, 0, 1]})
+        landmarks = _make_landmarks([1, 0, 0, 0, 0])
+        assert classifier.classify(landmarks) == "thumbs_up"
+
 
 class TestMotionTracker:
     def setup_method(self):
