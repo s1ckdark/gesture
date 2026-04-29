@@ -59,4 +59,46 @@ final class ConfigManagerTests: XCTestCase {
         let config = try ConfigManager.load(from: configPath)
         XCTAssertFalse(config.gestures.isEmpty)
     }
+
+    /// Guards against silent schema drift: encoding the default config back to
+    /// YAML and decoding again must yield the same in-memory AppConfig.
+    /// Catches regressions where new ActionConfig fields are added to the
+    /// struct but not to CodingKeys, or vice-versa.
+    func testDefaultConfigRoundTripsThroughYams() throws {
+        let projectRoot = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let configPath = projectRoot.appendingPathComponent("config/default.yaml").path
+        let original = try ConfigManager.load(from: configPath)
+
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("gesture-roundtrip-\(UUID().uuidString).yaml")
+        try ConfigManager.save(original, to: tmp.path)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let reloaded = try ConfigManager.load(from: tmp.path)
+        XCTAssertEqual(original, reloaded,
+                       "AppConfig must survive a Yams encode/decode cycle unchanged")
+    }
+
+    /// Verifies the runtime invariant: setting `type` clears irrelevant fields
+    /// (so a stale `keys` doesn't survive a switch to `.shell`) and seeds
+    /// defaults for the new type. Backed by the didSet on ActionConfig.type.
+    func testActionConfigTypeChangeAutoConforms() {
+        var a = ActionConfig(type: .hotkey, keys: ["cmd", "c"], command: nil, script: nil)
+        a.type = .shell
+        XCTAssertNil(a.keys, "stale keys should be cleared on type change")
+        XCTAssertEqual(a.command, "", "shell default should seed empty command")
+
+        a.type = .click
+        XCTAssertNil(a.command, "stale command should be cleared on type change")
+        XCTAssertEqual(a.button, "left")
+        XCTAssertEqual(a.clickCount, 1)
+
+        a.type = .obsCommand
+        XCTAssertNil(a.button)
+        XCTAssertEqual(a.obsHost, "localhost:4455")
+    }
 }

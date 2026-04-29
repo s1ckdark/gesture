@@ -6,6 +6,19 @@ versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-29
+
+### Refactored
+- `engine/landmarks.py` extracted from classifier.py — `palm_center` and `finger_states` are now module functions; 4 inline duplicates collapsed
+- `_RecentBuffer` shared by `SequenceClassifier` and `ChordClassifier` — ~40 lines saved, identical behavior
+- `engine/config_parser.py` extracted — `GestureEngine.__init__` shrinks from ~70 to ~10 lines, each per-type parser unit-testable
+- `GestureApp.handleGestureEvent` pipeline broken into named methods (voiceGate → fatigueGate → runSideEffects → selfTestSink → notify → action)
+- `ActionType.brief / isValid / displayLabel` extension — collapses 4 duplicated 9-case switches across the codebase
+- `ActionConfig.conformFieldsToType` mutating method, called automatically by `type`'s didSet — eliminates the "stale field after switching action type" bug; `init(from: Decoder)` is unaffected so YAML round-trips intact
+
+### Tests
+- New ConfigManagerTests cover Yams round-trip on default.yaml and the auto-conform invariant on type changes (14 swift tests total)
+
 ## [0.6.0] - 2026-04-29
 
 ### Added

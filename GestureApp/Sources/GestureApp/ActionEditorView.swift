@@ -9,13 +9,9 @@ struct ActionEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Action").font(.subheadline)
-            Picker("", selection: Binding(
-                get: { config.type },
-                set: { newType in
-                    config.type = newType
-                    sanitize(for: newType)
-                }
-            )) {
+            // Setting config.type triggers ActionConfig.didSet → conformFieldsToType,
+            // so the per-type defaults seed and stale fields clear automatically.
+            Picker("", selection: $config.type) {
                 Text("Hotkey").tag(ActionType.hotkey)
                 Text("Shell").tag(ActionType.shell)
                 Text("Click").tag(ActionType.click)
@@ -212,29 +208,6 @@ struct ActionEditorView: View {
         case "ctrl": return "⌃"
         case "opt": return "⌥"
         default: return key.uppercased()
-        }
-    }
-
-    /// Reset fields that don't apply to the new type so YAML doesn't carry leftovers.
-    private func sanitize(for newType: ActionType) {
-        // Clear all type-specific fields, then seed defaults for newType.
-        config.keys = nil; config.command = nil; config.text = nil
-        config.button = nil; config.clickCount = nil
-        config.dx = nil; config.dy = nil
-        config.url = nil; config.body = nil
-        config.obsHost = nil; config.obsPassword = nil; config.obsRequest = nil
-        config.steps = nil
-
-        switch newType {
-        case .hotkey: config.keys = []
-        case .shell: config.command = ""
-        case .click: config.button = "left"; config.clickCount = 1
-        case .scroll: config.dx = 0; config.dy = -120
-        case .typeText: config.text = ""
-        case .webhook: config.url = ""
-        case .obsCommand: config.obsHost = "localhost:4455"; config.obsRequest = ""
-        case .chain: config.steps = []
-        case .applescript: break
         }
     }
 

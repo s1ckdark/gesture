@@ -89,7 +89,13 @@ extension ActionType {
 }
 
 struct ActionConfig: Codable, Equatable {
-    var type: ActionType
+    /// Setting type at runtime auto-sanitizes the other fields so a stale
+    /// `keys` doesn't survive a switch to .shell. didSet does not fire during
+    /// `init(from: Decoder)`, so YAML round-trips don't accidentally clear
+    /// fields that were intentionally written by another writer.
+    var type: ActionType {
+        didSet { if type != oldValue { conformFieldsToType() } }
+    }
     var keys: [String]?
     var command: String?
     var script: String?
@@ -124,6 +130,47 @@ struct ActionConfig: Codable, Equatable {
         case obsPassword = "obs_password"
         case obsRequest = "obs_request"
         case delayMs = "delay_ms"
+    }
+
+    /// Clear all fields that don't apply to the current type, then seed
+    /// the canonical default for the type if the relevant field is empty.
+    /// Called automatically by the `type` didSet; UI editors no longer need
+    /// to call sanitize() explicitly when switching action types.
+    mutating func conformFieldsToType() {
+        // Phase 1: clear every type-specific field
+        if type != .hotkey { keys = nil }
+        if type != .shell { command = nil }
+        if type != .click { button = nil; clickCount = nil }
+        if type != .scroll { dx = nil; dy = nil }
+        if type != .typeText { text = nil }
+        if type != .webhook { url = nil; body = nil }
+        if type != .obsCommand { obsHost = nil; obsPassword = nil; obsRequest = nil }
+        if type != .chain { steps = nil }
+
+        // Phase 2: seed sensible defaults
+        switch type {
+        case .hotkey:
+            if keys == nil { keys = [] }
+        case .shell:
+            if command == nil { command = "" }
+        case .click:
+            if button == nil { button = "left" }
+            if clickCount == nil { clickCount = 1 }
+        case .scroll:
+            if dx == nil { dx = 0 }
+            if dy == nil { dy = -120 }
+        case .typeText:
+            if text == nil { text = "" }
+        case .webhook:
+            if url == nil { url = "" }
+        case .obsCommand:
+            if obsHost == nil { obsHost = "localhost:4455" }
+            if obsRequest == nil { obsRequest = "" }
+        case .chain:
+            if steps == nil { steps = [] }
+        case .applescript:
+            break
+        }
     }
 }
 

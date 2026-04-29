@@ -18,13 +18,38 @@ Two-process architecture:
 
 ## Features
 
-- **7 built-in poses & motions** — thumbs_up, peace, fist, open_palm, ok_sign, swipe_left, swipe_right
-- **Custom static poses** — define your own 5-finger patterns directly in YAML, no code changes
-- **Action types** — keyboard shortcut (CGEvent) or shell command (zsh)
-- **In-app editor** — Settings window lets you remap any gesture to any shortcut, with live key recorder
-- **Camera preview** — debug window streams a downsampled live feed when you need to verify positioning
-- **Launch at login** — toggleable from the menu
-- **Stable recognition** — N-frame confirmation for static poses, 800ms cooldown to prevent runaway repeats
+**Gesture types**
+- 7 built-in poses & motions (thumbs_up, peace, fist, open_palm, ok_sign, swipe_left/right)
+- Custom static poses — define 5-finger patterns in YAML or via the GUI
+- Two-handed static poses (`static_dual`) with optional palm-proximity gating
+- Two-handed motion (`motion_dual`) — coordinated swipes between hands
+- Custom motion gestures (`motion_custom`) recorded and matched via DTW
+- Sequence macros (`sequence`) — ordered gesture chains within a window
+- Chord macros (`chord`) — unordered set of gestures within a window
+
+**Actions**
+- hotkey, shell, click, scroll, type_text, webhook, obs_command, chain
+- Per-app overrides (by bundle ID and/or window title substring)
+- Action chains — single gesture fires multiple sub-actions with delays
+
+**App UX**
+- Settings window with live hotkey recorder, motion recorder, macro recorder, preset library, app-override editor
+- Camera preview with palm-position heatmap and live finger HUD
+- Multi-config profiles (`~/.gesture/profiles/<name>.yaml`) with clipboard / URL / paste import-export
+- Self-test mode walking through every configured gesture
+- Stats dashboard with Charts framework
+- Onboarding wizard, anti-fatigue burst suppression, voice-gate (wake-word required)
+- Optional sound, system notification, TTS, transient menu-bar icon flash
+- Localization: English + 한국어
+- Launch-at-login (`SMAppService`)
+
+**Integrations**
+- Local HTTP API: `POST /trigger/<name>`, `GET /stats`, `GET /config`
+- Python plugin SDK — `~/.gesture/plugins/*.py` files with a `handle(name, event)` function are loaded by the engine
+
+**Recognition**
+- N-frame static-pose confirmation, configurable cooldown
+- Engine-side `recognition` knobs in YAML: `ok_sign_distance`, `motion_threshold`, `motion_template_threshold`, `detect_every_n_frames`, `use_gpu`
 
 ## Quick start
 
